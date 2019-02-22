@@ -68,7 +68,10 @@ addons:
       - lcov
       - ggcov
 
+# Seems new way is to call: pip install --user cpp-coveralls
+# That works for installing cpp-coveralls, but haven't figured out how to get cpp-coveralls to work.
 before_install:
+  - gem install coveralls-lcov
   - pip install --user cpp-coveralls
 
 # Install stage. Setup dependencies that can't be setup as addon packages.
