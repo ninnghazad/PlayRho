@@ -45,7 +45,7 @@ For coding, begin simply by including the <code>PlayRho/PlayRho.hpp</code> heade
  Here's what this might look like:
  @code
  #include <PlayRho/PlayRho.hpp>
- 
+
  int main()
  {
      auto world = playrho::d2::World{};
@@ -117,6 +117,7 @@ For a more elaborate example, see
 #include <PlayRho/Dynamics/Joints/DistanceJoint.hpp>
 #include <PlayRho/Dynamics/Joints/FrictionJoint.hpp>
 #include <PlayRho/Dynamics/Joints/GearJoint.hpp>
+#include <PlayRho/Dynamics/Joints/GravityJoint.hpp>
 #include <PlayRho/Dynamics/Joints/MotorJoint.hpp>
 #include <PlayRho/Dynamics/Joints/TargetJoint.hpp>
 #include <PlayRho/Dynamics/Joints/PrismaticJoint.hpp>

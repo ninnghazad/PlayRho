@@ -38,10 +38,10 @@ public:
     /// @brief Procedure alias.
     template <class T>
     using Proc = std::function<void(T)>;
-    
+
     //using Tuple = std::tuple<Proc<Types>...>;
     //FunctionalJointVisitor(const Tuple& v): procs{v} {}
-    
+
     /// @brief Tuple alias.
     using Tuple = std::tuple<
         Proc<const RevoluteJoint&>,
@@ -65,7 +65,9 @@ public:
         Proc<const RopeJoint&>,
         Proc<      RopeJoint&>,
         Proc<const MotorJoint&>,
-        Proc<      MotorJoint&>
+        Proc<      MotorJoint&>,
+        Proc<const GravityJoint&>,
+        Proc<      GravityJoint&>
     >;
 
     Tuple procs; ///< Procedures.
@@ -78,7 +80,7 @@ public:
         std::get<Proc<T>>(procs) = proc;
         return *this;
     }
-    
+
     // Overrides of all the base class's Visit methods...
     // Uses decltype to ensure the correctly typed invocation of the Handle method.
     void Visit(const RevoluteJoint& arg) override { Handle<decltype(arg)>(arg); }
@@ -103,6 +105,8 @@ public:
     void Visit(RopeJoint& arg) override { Handle<decltype(arg)>(arg); }
     void Visit(const MotorJoint& arg) override { Handle<decltype(arg)>(arg); }
     void Visit(MotorJoint& arg) override { Handle<decltype(arg)>(arg); }
+    void Visit(const GravityJoint& arg) override { Handle<decltype(arg)>(arg); }
+    void Visit(GravityJoint& arg) override { Handle<decltype(arg)>(arg); }
 
 private:
 
@@ -122,4 +126,3 @@ private:
 } // namespace playrho
 
 #endif // PLAYRHO_DYNAMICS_JOINTS_FUNCTIONALJOINTVISITOR_HPP
-

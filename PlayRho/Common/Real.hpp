@@ -66,7 +66,7 @@ namespace playrho {
 /// @sa http://en.cppreference.com/w/cpp/types/is_floating_point
 /// @sa http://en.cppreference.com/w/cpp/concept/LiteralType
 ///
-using Real = float;
+using Real = double;
 
 } // namespace playrho
 
