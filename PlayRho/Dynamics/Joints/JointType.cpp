@@ -47,6 +47,7 @@ const char* ToString(JointType type) noexcept
         case JointType::Friction: return "Friction";
         case JointType::Rope: return "Rope";
         case JointType::Motor: return "Motor";
+        case JointType::Gravity: return "Gravity";
         case JointType::Unknown: break;
     }
     assert(type == JointType::Unknown);

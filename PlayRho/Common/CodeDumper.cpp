@@ -58,7 +58,7 @@ namespace {
         std::vprintf(string, args);
         va_end(args);
     }
-    
+
 }
 
 void Dump(const World& world)
@@ -72,7 +72,7 @@ void Dump(const World& world)
         Dump(b, i);
         ++i;
     }
-    
+
     const auto& joints = world.GetJoints();
     log("Joint** joints = (Joint**)Alloc(%d * sizeof(Joint*));\n", size(joints));
     i = 0;
@@ -83,7 +83,7 @@ void Dump(const World& world)
         log("}\n");
         ++i;
     }
-    
+
     log("Free(joints);\n");
     log("Free(bodies);\n");
     log("joints = nullptr;\n");

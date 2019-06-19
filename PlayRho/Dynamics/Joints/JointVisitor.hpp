@@ -35,6 +35,7 @@ class WeldJoint;
 class FrictionJoint;
 class RopeJoint;
 class MotorJoint;
+class GravityJoint;
 
 /// @brief Visitor interface for Joint instances.
 ///
@@ -46,28 +47,28 @@ class JointVisitor
 {
 public:
     virtual ~JointVisitor() = default;
-    
+
     /// @brief Visits a revolute joint (<code>RevoluteJoint</code>).
     virtual void Visit(const RevoluteJoint& joint) = 0;
-    
+
     /// @brief Visits a revolute joint (<code>RevoluteJoint</code>).
     virtual void Visit(RevoluteJoint& joint) = 0;
-    
+
     /// @brief Visits a prismatic joint (<code>PrismaticJoint</code>).
     virtual void Visit(const PrismaticJoint& joint) = 0;
-    
+
     /// @brief Visits a prismatic joint (<code>PrismaticJoint</code>).
     virtual void Visit(PrismaticJoint& joint) = 0;
-    
+
     /// @brief Visits a distance joint (<code>DistanceJoint</code>).
     virtual void Visit(const DistanceJoint& joint) = 0;
-    
+
     /// @brief Visits a distance joint (<code>DistanceJoint</code>).
     virtual void Visit(DistanceJoint& joint) = 0;
-    
+
     /// @brief Visits a pulley joint (<code>PulleyJoint</code>).
     virtual void Visit(const PulleyJoint& joint) = 0;
-    
+
     /// @brief Visits a pulley joint (<code>PulleyJoint</code>).
     virtual void Visit(PulleyJoint& joint) = 0;
 
@@ -88,22 +89,22 @@ public:
 
     /// @brief Visits a wheel joint (<code>WheelJoint</code>).
     virtual void Visit(WheelJoint& joint) = 0;
-    
+
     /// @brief Visits a weld joint (<code>WeldJoint</code>).
     virtual void Visit(const WeldJoint& joint) = 0;
-    
+
     /// @brief Visits a weld joint (<code>WeldJoint</code>).
     virtual void Visit(WeldJoint& joint) = 0;
-    
+
     /// @brief Visits a friction joint (<code>FrictionJoint</code>).
     virtual void Visit(const FrictionJoint& joint) = 0;
-    
+
     /// @brief Visits a friction joint (<code>FrictionJoint</code>).
     virtual void Visit(FrictionJoint& joint) = 0;
-    
+
     /// @brief Visits a rope joint (<code>RopeJoint</code>).
     virtual void Visit(const RopeJoint& joint) = 0;
-    
+
     /// @brief Visits a rope joint (<code>RopeJoint</code>).
     virtual void Visit(RopeJoint& joint) = 0;
 
@@ -112,19 +113,25 @@ public:
 
     /// @brief Visits a motor joint (<code>MotorJoint</code>).
     virtual void Visit(MotorJoint& joint) = 0;
-    
+
+    /// @brief Visits a gravity joint (<code>GravityJoint</code>).
+    virtual void Visit(const GravityJoint& joint) = 0;
+
+    /// @brief Visits a gravity joint (<code>GravityJoint</code>).
+    virtual void Visit(GravityJoint& joint) = 0;
+
 protected:
     JointVisitor() = default;
-    
+
     /// @brief Copy constructor.
     JointVisitor(const JointVisitor& other) = default;
-    
+
     /// @brief Move constructor.
     JointVisitor(JointVisitor&& other) = default;
-    
+
     /// @brief Copy assignment operator.
     JointVisitor& operator= (const JointVisitor& other) = default;
-    
+
     /// @brief Move assignment operator.
     JointVisitor& operator= (JointVisitor&& other) = default;
 };
@@ -155,6 +162,8 @@ public:
     void Visit(RopeJoint& j) override { Visit(static_cast<const RopeJoint&>(j)); }
     void Visit(const MotorJoint& j) override = 0;
     void Visit(MotorJoint& j) override { Visit(static_cast<const MotorJoint&>(j)); }
+    void Visit(const GravityJoint& j) override = 0;
+    void Visit(GravityJoint& j) override { Visit(static_cast<const GravityJoint&>(j)); }
 };
 
 } // namespace d2

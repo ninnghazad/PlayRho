@@ -46,6 +46,7 @@
 #include <PlayRho/Dynamics/Joints/FrictionJoint.hpp>
 #include <PlayRho/Dynamics/Joints/RopeJoint.hpp>
 #include <PlayRho/Dynamics/Joints/MotorJoint.hpp>
+#include <PlayRho/Dynamics/Joints/GravityJoint.hpp>
 
 #include <PlayRho/Dynamics/Contacts/Contact.hpp>
 #include <PlayRho/Dynamics/Contacts/ContactSolver.hpp>
@@ -109,7 +110,7 @@ using PositionConstraints = std::vector<PositionConstraint>;
 using VelocityConstraints = std::vector<VelocityConstraint>;
 
 namespace {
-    
+
     inline void IntegratePositions(BodyConstraints& bodies, Time h)
     {
         assert(IsValid(h));
@@ -120,7 +121,7 @@ namespace {
             bc.SetPosition(bc.GetPosition() + Position{translation, rotation});
         });
     }
-    
+
     /// Reports the given constraints to the listener.
     /// @details
     /// This calls the listener's PostSolve method for all size(contacts) elements of
@@ -138,11 +139,11 @@ namespace {
             listener.PostSolve(*contacts[i], GetContactImpulses(constraints[i]), solved);
         }
     }
-    
+
     inline void AssignImpulses(Manifold& var, const VelocityConstraint& vc)
     {
         assert(var.GetPointCount() >= vc.GetPointCount());
-        
+
         auto assignProc = [&](VelocityConstraint::size_type i) {
             var.SetPointImpulses(i, GetNormalImpulseAtPoint(vc, i), GetTangentImpulseAtPoint(vc, i));
         };
@@ -158,7 +159,7 @@ namespace {
         }
 #endif
     }
-    
+
     inline void WarmStartVelocities(const VelocityConstraints& velConstraints)
     {
         for_each(cbegin(velConstraints), cend(velConstraints),
@@ -192,7 +193,7 @@ namespace {
 #endif
         return map;
     }
-    
+
     BodyConstraints GetBodyConstraints(const Island::Bodies& bodies, Time h, MovementConf conf)
     {
         auto constraints = BodyConstraints{};
@@ -210,7 +211,7 @@ namespace {
         constraints.reserve(size(contacts));
         transform(cbegin(contacts), cend(contacts), back_inserter(constraints), [&](const Contact *contact) {
             const auto& manifold = static_cast<const Contact*>(contact)->GetManifold();
-            
+
             const auto& fixtureA = *(GetFixtureA(*contact));
             const auto& fixtureB = *(GetFixtureB(*contact));
             const auto indexA = GetChildIndexA(*contact);
@@ -218,16 +219,16 @@ namespace {
 
             const auto bodyA = GetBodyA(*contact);
             const auto shapeA = fixtureA.GetShape();
-            
+
             const auto bodyB = GetBodyB(*contact);
             const auto shapeB = fixtureB.GetShape();
-            
+
             const auto bodyConstraintA = At(bodies, bodyA);
             const auto bodyConstraintB = At(bodies, bodyB);
-            
+
             const auto radiusA = GetVertexRadius(shapeA, indexA);
             const auto radiusB = GetVertexRadius(shapeB, indexB);
-            
+
             return PositionConstraint{
                 manifold, *bodyConstraintA, radiusA, *bodyConstraintB, radiusB
             };
@@ -260,16 +261,16 @@ namespace {
 
             const auto bodyA = fixtureA->GetBody();
             const auto shapeA = fixtureA->GetShape();
-            
+
             const auto bodyB = fixtureB->GetBody();
             const auto shapeB = fixtureB->GetShape();
-            
+
             const auto bodyConstraintA = At(bodies, bodyA);
             const auto bodyConstraintB = At(bodies, bodyB);
-            
+
             const auto radiusA = GetVertexRadius(shapeA, indexA);
             const auto radiusB = GetVertexRadius(shapeB, indexB);
-    
+
             const auto xfA = GetTransformation(bodyConstraintA->GetPosition(),
                                                bodyConstraintA->GetLocalCenter());
             const auto xfB = GetTransformation(bodyConstraintB->GetPosition(),
@@ -296,7 +297,7 @@ namespace {
         });
         return maxIncImpulse;
     }
-    
+
     /// Solves the given position constraints.
     /// @details This updates positions (and nothing else) by calling the position constraint solving function.
     /// @note Can't expect the returned minimum separation to be greater than or equal to
@@ -307,7 +308,7 @@ namespace {
                                     ConstraintSolverConf conf)
     {
         auto minSeparation = std::numeric_limits<Length>::infinity();
-        
+
         for_each(begin(posConstraints), end(posConstraints), [&](PositionConstraint &pc) {
             assert(pc.GetBodyA() != pc.GetBodyB()); // Confirms ContactManager::Add() did its job.
             const auto res = GaussSeidel::SolvePositionConstraint(pc, true, true, conf);
@@ -315,10 +316,10 @@ namespace {
             pc.GetBodyB()->SetPosition(res.pos_b);
             minSeparation = std::min(minSeparation, res.min_separation);
         });
-        
+
         return minSeparation;
     }
-    
+
 #if 0
     /// Solves the given position constraints.
     ///
@@ -341,7 +342,7 @@ namespace {
                                     ConstraintSolverConf conf)
     {
         auto minSeparation = std::numeric_limits<Length>::infinity();
-        
+
         for_each(begin(posConstraints), end(posConstraints), [&](PositionConstraint &pc) {
             const auto moveA = (pc.GetBodyA() == bodyConstraintA) || (pc.GetBodyA() == bodyConstraintB);
             const auto moveB = (pc.GetBodyB() == bodyConstraintA) || (pc.GetBodyB() == bodyConstraintB);
@@ -350,11 +351,11 @@ namespace {
             pc.GetBodyB()->SetPosition(res.pos_b);
             minSeparation = std::min(minSeparation, res.min_separation);
         });
-        
+
         return minSeparation;
     }
 #endif
-    
+
     inline Time GetUnderActiveTime(const Body& b, const StepConf& conf) noexcept
     {
         const auto underactive = IsUnderActive(b.GetVelocity(), conf.linearSleepTolerance,
@@ -377,7 +378,7 @@ namespace {
         });
         return minUnderActiveTime;
     }
-    
+
     inline BodyCounter Sleepem(Island::Bodies& bodies)
     {
         auto unawoken = BodyCounter{0};
@@ -390,12 +391,12 @@ namespace {
         });
         return unawoken;
     }
-    
+
     inline bool IsValidForTime(TOIOutput::State state) noexcept
     {
         return state == TOIOutput::e_touching;
     }
-    
+
     void FlagContactsForFiltering(const Body& bodyA, const Body& bodyB) noexcept
     {
         for (auto& ci: bodyB.GetContacts())
@@ -414,7 +415,7 @@ namespace {
             }
         }
     }
-    
+
 } // anonymous namespace
 
 World::World(const WorldConf& def):
@@ -449,7 +450,7 @@ World::World(const World& other):
 World& World::operator= (const World& other)
 {
     Clear();
-    
+
     m_destructionListener = other.m_destructionListener;
     m_contactListener = other.m_contactListener;
     m_flags = other.m_flags;
@@ -466,7 +467,7 @@ World& World::operator= (const World& other)
 
     return *this;
 }
-    
+
 World::~World() noexcept
 {
     InternalClear();
@@ -576,7 +577,7 @@ void World::CopyContacts(const std::map<const Body*, Body*>& bodyMap,
             BodyAtty::Insert(*newBodyA, key, newContact);
             BodyAtty::Insert(*newBodyB, key, newContact);
             // No need to wake up the bodies - this should already be done due to above copy
-            
+
             newContact->SetFriction(otherContact.GetFriction());
             newContact->SetRestitution(otherContact.GetRestitution());
             newContact->SetTangentSpeed(otherContact.GetTangentSpeed());
@@ -598,7 +599,7 @@ void World::CopyJoints(const std::map<const Body*, Body*>& bodyMap,
     class JointCopier: public ConstJointVisitor
     {
     public:
-        
+
         JointCopier(World& w, std::map<const Body*, Body*> bodies):
             world{w}, bodyMap{std::move(bodies)}
         {
@@ -612,7 +613,7 @@ void World::CopyJoints(const std::map<const Body*, Body*>& bodyMap,
             def.bodyB = bodyMap.at(def.bodyB);
             jointMap[&oldJoint] = Add(JointAtty::Create(def));
         }
-        
+
         void Visit(const PrismaticJoint& oldJoint) override
         {
             auto def = GetPrismaticJointConf(oldJoint);
@@ -628,7 +629,7 @@ void World::CopyJoints(const std::map<const Body*, Body*>& bodyMap,
             def.bodyB = bodyMap.at(def.bodyB);
             jointMap[&oldJoint] = Add(JointAtty::Create(def));
         }
-        
+
         void Visit(const PulleyJoint& oldJoint) override
         {
             auto def = GetPulleyJointConf(oldJoint);
@@ -636,7 +637,7 @@ void World::CopyJoints(const std::map<const Body*, Body*>& bodyMap,
             def.bodyB = bodyMap.at(def.bodyB);
             jointMap[&oldJoint] = Add(JointAtty::Create(def));
         }
-        
+
         void Visit(const TargetJoint& oldJoint) override
         {
             auto def = GetTargetJointConf(oldJoint);
@@ -644,7 +645,7 @@ void World::CopyJoints(const std::map<const Body*, Body*>& bodyMap,
             def.bodyB = (def.bodyB)? bodyMap.at(def.bodyB): nullptr;
             jointMap[&oldJoint] = Add(JointAtty::Create(def));
         }
-        
+
         void Visit(const GearJoint& oldJoint) override
         {
             auto def = GetGearJointConf(oldJoint);
@@ -687,14 +688,22 @@ void World::CopyJoints(const std::map<const Body*, Body*>& bodyMap,
             jointMap[&oldJoint] = Add(JointAtty::Create(def));
         }
 
-        void Visit(const MotorJoint& oldJoint) override
+	void Visit(const MotorJoint& oldJoint) override
         {
             auto def = GetMotorJointConf(oldJoint);
             def.bodyA = bodyMap.at(def.bodyA);
             def.bodyB = bodyMap.at(def.bodyB);
             jointMap[&oldJoint] = Add(JointAtty::Create(def));
         }
-        
+
+	void Visit(const GravityJoint& oldJoint) override
+        {
+            auto def = GetGravityJointConf(oldJoint);
+            def.bodyA = bodyMap.at(def.bodyA);
+            def.bodyB = bodyMap.at(def.bodyB);
+            jointMap[&oldJoint] = Add(JointAtty::Create(def));
+        }
+
         Joint* Add(Joint* newJoint)
         {
             world.Add(newJoint);
@@ -725,7 +734,7 @@ Body* World::CreateBody(const BodyConf& def)
     {
         throw LengthError("World::CreateBody: operation would exceed MaxBodies");
     }
-    
+
     auto& b = *BodyAtty::CreateBody(this, def);
 
     // Add to world bodies collection.
@@ -758,12 +767,12 @@ void World::Destroy(Body* body)
 {
     assert(body);
     assert(body->GetWorld() == this);
-    
+
     if (IsLocked())
     {
         throw WrongState("World::Destroy: world is locked");
     }
-    
+
     // Delete the attached joints.
     BodyAtty::ClearJoints(*body, [&](Joint& joint) {
         if (m_destructionListener)
@@ -772,13 +781,13 @@ void World::Destroy(Body* body)
         }
         InternalDestroy(joint);
     });
-    
+
     // Destroy the attached contacts.
     BodyAtty::EraseContacts(*body, [&](Contact& contact) {
         Destroy(&contact, body);
         return true;
     });
-    
+
     // Delete the attached fixtures. This destroys broad-phase proxies.
     BodyAtty::ClearFixtures(*body, [&](Fixture& fixture) {
         if (m_destructionListener)
@@ -789,7 +798,7 @@ void World::Destroy(Body* body)
         DestroyProxies(fixture);
         FixtureAtty::Delete(&fixture);
     });
-    
+
     Remove(*body);
 }
 
@@ -799,17 +808,17 @@ Joint* World::CreateJoint(const JointConf& def)
     {
         throw WrongState("World::CreateJoint: world is locked");
     }
-    
+
     if (size(m_joints) >= MaxJoints)
     {
         throw LengthError("World::CreateJoint: operation would exceed MaxJoints");
     }
-    
+
     // Note: creating a joint doesn't wake the bodies.
     const auto j = JointAtty::Create(def);
 
     Add(j);
- 
+
     const auto bodyA = j->GetBodyA();
     const auto bodyB = j->GetBodyB();
 
@@ -818,7 +827,7 @@ Joint* World::CreateJoint(const JointConf& def)
     {
         FlagContactsForFiltering(*bodyA, *bodyB);
     }
-    
+
     return j;
 }
 
@@ -852,11 +861,11 @@ void World::Destroy(Joint* joint)
         InternalDestroy(*joint);
     }
 }
-    
+
 void World::InternalDestroy(Joint& joint) noexcept
 {
     Remove(joint);
-    
+
     // Disconnect from island graph.
     const auto bodyA = joint.GetBodyA();
     const auto bodyB = joint.GetBodyB();
@@ -895,7 +904,7 @@ void World::AddToIsland(Island& island, Body& seed,
     assert(seed.IsEnabled());
     assert(remNumBodies != 0);
     assert(remNumBodies < MaxBodies);
-    
+
     // Perform a depth first search (DFS) on the constraint graph.
 
     // Create a stack for bodies to be is-in-island that aren't already in the island.
@@ -917,13 +926,13 @@ void World::AddToIsland(Island& island, BodyStack& stack,
         // Grab the next body off the stack and add it to the island.
         const auto b = stack.back();
         stack.pop_back();
-        
+
         assert(b);
         assert(b->IsEnabled());
         island.m_bodies.push_back(b);
         assert(remNumBodies > 0);
         --remNumBodies;
-        
+
         // Don't propagate islands across bodies that can't have a velocity (static bodies).
         // This keeps islands smaller and helps with isolating separable collision clusters.
         if (!b->IsSpeedable())
@@ -937,13 +946,13 @@ void World::AddToIsland(Island& island, BodyStack& stack,
         const auto oldNumContacts = size(island.m_contacts);
         // Adds appropriate contacts of current body and appropriate 'other' bodies of those contacts.
         AddContactsToIsland(island, stack, b);
-        
+
         const auto newNumContacts = size(island.m_contacts);
         assert(newNumContacts >= oldNumContacts);
         const auto netNumContacts = newNumContacts - oldNumContacts;
         assert(remNumContacts >= netNumContacts);
         remNumContacts -= netNumContacts;
-        
+
         const auto numJoints = size(island.m_joints);
         // Adds appropriate joints of current body and appropriate 'other' bodies of those joint.
         AddJointsToIsland(island, stack, b);
@@ -1094,14 +1103,14 @@ RegStepStats World::SolveReg(const StepConf& conf)
 
     // Look for new contacts.
     stats.contactsAdded = FindNewContacts();
-    
+
     return stats;
 }
 
 IslandStats World::SolveRegIslandViaGS(const StepConf& conf, Island island)
 {
     assert(!empty(island.m_bodies) || !empty(island.m_contacts) || !empty(island.m_joints));
-    
+
     auto results = IslandStats{};
     results.positionIterations = conf.regPositionIterations;
     const auto h = conf.GetTime(); ///< Time step.
@@ -1110,14 +1119,14 @@ IslandStats World::SolveRegIslandViaGS(const StepConf& conf, Island island)
     for_each(cbegin(island.m_bodies), cend(island.m_bodies), [&](Body* body) {
         BodyAtty::SetPosition0(*body, GetPosition1(*body)); // like Advance0(1) on the sweep.
     });
-    
+
     // Copy bodies' pos1 and velocity data into local arrays.
     auto bodyConstraints = GetBodyConstraints(island.m_bodies, h, GetMovementConf(conf));
     auto bodyConstraintsMap = GetBodyConstraintsMap(island.m_bodies, bodyConstraints);
     auto posConstraints = GetPositionConstraints(island.m_contacts, bodyConstraintsMap);
     auto velConstraints = GetVelocityConstraints(island.m_contacts, bodyConstraintsMap,
                                                       GetRegVelocityConstraintConf(conf));
-    
+
     if (conf.doWarmStart)
     {
         WarmStartVelocities(velConstraints);
@@ -1128,7 +1137,7 @@ IslandStats World::SolveRegIslandViaGS(const StepConf& conf, Island island)
     for_each(cbegin(island.m_joints), cend(island.m_joints), [&](Joint* joint) {
         JointAtty::InitVelocityConstraints(*joint, bodyConstraintsMap, conf, psConf);
     });
-    
+
     results.velocityIterations = conf.regVelocityIterations;
     for (auto i = decltype(conf.regVelocityIterations){0}; i < conf.regVelocityIterations; ++i)
     {
@@ -1153,10 +1162,10 @@ IslandStats World::SolveRegIslandViaGS(const StepConf& conf, Island island)
             break;
         }
     }
-    
+
     // updates array of tentative new body positions per the velocities as if there were no obstacles...
     IntegratePositions(bodyConstraints, h);
-    
+
     // Solve position constraints
     for (auto i = decltype(conf.regPositionIterations){0}; i < conf.regPositionIterations; ++i)
     {
@@ -1177,14 +1186,14 @@ IslandStats World::SolveRegIslandViaGS(const StepConf& conf, Island island)
             break;
         }
     }
-    
+
     // Update normal and tangent impulses of contacts' manifold points
     for_each(cbegin(velConstraints), cend(velConstraints), [&](const VelocityConstraint& vc) {
         const auto i = static_cast<VelocityConstraints::size_type>(&vc - data(velConstraints));
         auto& manifold = ContactAtty::GetMutableManifold(*island.m_contacts[i]);
         AssignImpulses(manifold, vc);
     });
-    
+
     for_each(cbegin(bodyConstraints), cend(bodyConstraints), [&](const BodyConstraint& bc) {
         const auto i = static_cast<size_t>(&bc - data(bodyConstraints));
         assert(i < size(bodyConstraints));
@@ -1192,7 +1201,7 @@ IslandStats World::SolveRegIslandViaGS(const StepConf& conf, Island island)
         // normalization isn't handled correctly by joints that constrain rotation.
         UpdateBody(*island.m_bodies[i], bc.GetPosition(), bc.GetVelocity());
     });
-    
+
     // XXX: Should contacts needing updating be updated now??
 
     if (m_contactListener)
@@ -1200,7 +1209,7 @@ IslandStats World::SolveRegIslandViaGS(const StepConf& conf, Island island)
         Report(*m_contactListener, island.m_contacts, velConstraints,
                results.solved? results.positionIterations - 1: StepConf::InvalidIteration);
     }
-    
+
     results.bodiesSlept = BodyCounter{0};
     const auto minUnderActiveTime = UpdateUnderActiveTimes(island.m_bodies, conf);
     if ((minUnderActiveTime >= conf.minStillTimeToSleep) && results.solved)
@@ -1235,7 +1244,7 @@ World::UpdateContactsData World::UpdateContactTOIs(const StepConf& conf)
     auto results = UpdateContactsData{};
 
     const auto toiConf = GetToiConf(conf);
-    
+
     for (auto&& contact: m_contacts)
     {
         auto& c = GetRef(std::get<Contact*>(contact));
@@ -1257,12 +1266,12 @@ World::UpdateContactsData World::UpdateContactTOIs(const StepConf& conf)
             ++results.numAtMaxSubSteps;
             continue;
         }
-        
+
         const auto fA = c.GetFixtureA();
         const auto fB = c.GetFixtureB();
         const auto bA = fA->GetBody();
         const auto bB = fB->GetBody();
-                
+
         /*
          * Put the sweeps onto the same time interval.
          * Presumably no unresolved collisions happen before the maximum of the bodies'
@@ -1273,18 +1282,18 @@ World::UpdateContactsData World::UpdateContactTOIs(const StepConf& conf)
         assert(alpha0 >= 0 && alpha0 < 1);
         BodyAtty::Advance0(*bA, alpha0);
         BodyAtty::Advance0(*bB, alpha0);
-        
+
         // Compute the TOI for this contact (one or both bodies are active and impenetrable).
         // Computes the time of impact in interval [0, 1]
         const auto output = CalcToi(c, toiConf);
-        
+
         // Use Min function to handle floating point imprecision which possibly otherwise
         // could provide a TOI that's greater than 1.
         const auto toi = IsValidForTime(output.state)?
             std::min(alpha0 + (1 - alpha0) * output.time, Real{1}): Real{1};
         assert(toi >= alpha0 && toi <= 1);
         ContactAtty::SetToi(c, toi);
-        
+
         results.maxDistIters = std::max(results.maxDistIters, output.stats.max_dist_iters);
         results.maxToiIters = std::max(results.maxToiIters, output.stats.toi_iters);
         results.maxRootIters = std::max(results.maxRootIters, output.stats.max_root_iters);
@@ -1293,7 +1302,7 @@ World::UpdateContactsData World::UpdateContactTOIs(const StepConf& conf)
 
     return results;
 }
-    
+
 World::ContactToiData World::GetSoonestContact() const noexcept
 {
     auto minToi = nextafter(Real{1}, Real{0});
@@ -1342,7 +1351,7 @@ ToiStepStats World::SolveToi(const StepConf& conf)
         stats.maxDistIters = std::max(stats.maxDistIters, updateData.maxDistIters);
         stats.maxRootIters = std::max(stats.maxRootIters, updateData.maxRootIters);
         stats.maxToiIters = std::max(stats.maxToiIters, updateData.maxToiIters);
-        
+
         const auto next = GetSoonestContact();
         const auto contact = next.contact;
         const auto ncount = next.simultaneous;
@@ -1367,7 +1376,7 @@ ToiStepStats World::SolveToi(const StepConf& conf)
             assert(!HasSensor(*contact));
             assert(IsActive(*contact));
             assert(IsImpenetrable(*contact));
-            
+
             const auto solverResults = SolveToi(conf, *contact);
             stats.minSeparation = std::min(stats.minSeparation, solverResults.minSeparation);
             stats.maxIncImpulse = std::max(stats.maxIncImpulse, solverResults.maxIncImpulse);
@@ -1435,7 +1444,7 @@ IslandStats World::SolveToi(const StepConf& conf, Contact& contact)
     assert(IsActive(contact));
     assert(IsImpenetrable(contact));
     assert(!IsIslanded(&contact));
-    
+
     const auto toi = contact.GetToi();
     const auto bA = contact.GetFixtureA()->GetBody();
     const auto bB = contact.GetFixtureB()->GetBody();
@@ -1495,7 +1504,7 @@ IslandStats World::SolveToi(const StepConf& conf, Contact& contact)
         return IslandSolverResults{};
     }
 #endif
-    
+
     if (bA->IsSpeedable())
     {
         BodyAtty::SetAwakeFlag(*bA);
@@ -1518,7 +1527,7 @@ IslandStats World::SolveToi(const StepConf& conf, Contact& contact)
      // These asserts get triggered sometimes if contacts within TOI are iterated over.
     assert(!IsIslanded(bA));
     assert(!IsIslanded(bB));
-    
+
     island.m_bodies.push_back(bA);
     SetIslanded(bA);
     island.m_bodies.push_back(bB);
@@ -1541,7 +1550,7 @@ IslandStats World::SolveToi(const StepConf& conf, Contact& contact)
         contactsUpdated += procOut.contactsUpdated;
         contactsSkipped += procOut.contactsSkipped;
     }
-    
+
     RemoveUnspeedablesFromIslanded(island.m_bodies);
 
     // Now solve for remainder of time step.
@@ -1569,7 +1578,7 @@ void World::UpdateBody(Body& body, const Position& pos, const Velocity& vel)
 IslandStats World::SolveToiViaGS(const StepConf& conf, Island& island)
 {
     auto results = IslandStats{};
-    
+
     /*
      * Presumably the regular phase resolution has already taken care of updating the
      * body's velocity w.r.t. acceleration and damping such that this call here to get
@@ -1592,9 +1601,9 @@ IslandStats World::SolveToiViaGS(const StepConf& conf, Island& island)
         bodyConstraintsMap[bodyB] = GetBodyConstraint(*bodyB);
     }
 #endif
-    
+
     auto posConstraints = GetPositionConstraints(island.m_contacts, bodyConstraintsMap);
-    
+
     // Solve TOI-based position constraints.
     assert(results.minSeparation == std::numeric_limits<Length>::infinity());
     assert(results.solved == false);
@@ -1625,7 +1634,7 @@ IslandStats World::SolveToiViaGS(const StepConf& conf, Island& island)
             }
         }
     }
-    
+
     // Leap of faith to new safe state.
     // Not doing this results in slower simulations.
     // Originally this update was only done to island.m_bodies 0 and 1.
@@ -1637,7 +1646,7 @@ IslandStats World::SolveToiViaGS(const StepConf& conf, Island& island)
         const auto fixtureB = contact->GetFixtureB();
         const auto bodyA = fixtureA->GetBody();
         const auto bodyB = fixtureB->GetBody();
-        
+
         BodyAtty::SetPosition0(*bodyA, bodyConstraintsMap.at(bodyA).GetPosition());
         BodyAtty::SetPosition0(*bodyB, bodyConstraintsMap.at(bodyB).GetPosition());
     }
@@ -1648,7 +1657,7 @@ IslandStats World::SolveToiViaGS(const StepConf& conf, Island& island)
         BodyAtty::SetPosition0(*island.m_bodies[i], bc.GetPosition());
     });
 #endif
-    
+
     auto velConstraints = GetVelocityConstraints(island.m_contacts, bodyConstraintsMap,
                                                  GetToiVelocityConstraintConf(conf));
 
@@ -1672,11 +1681,11 @@ IslandStats World::SolveToiViaGS(const StepConf& conf, Island& island)
         }
         results.maxIncImpulse = std::max(results.maxIncImpulse, newIncImpulse);
     }
-    
+
     // Don't store TOI contact forces for warm starting because they can be quite large.
-    
+
     IntegratePositions(bodyConstraints, conf.GetTime());
-    
+
     for_each(cbegin(bodyConstraints), cend(bodyConstraints), [&](const BodyConstraint& bc) {
         const auto i = static_cast<size_t>(&bc - data(bodyConstraints));
         assert(i < size(bodyConstraints));
@@ -1687,10 +1696,10 @@ IslandStats World::SolveToiViaGS(const StepConf& conf, Island& island)
     {
         Report(*m_contactListener, island.m_contacts, velConstraints, results.positionIterations);
     }
-    
+
     return results;
 }
-    
+
 void World::ResetContactsForSolveTOI(Body& body) noexcept
 {
     // Invalidate all contact TOIs on this displaced body.
@@ -1713,7 +1722,7 @@ World::ProcessContactsForTOI(Island& island, Body& body, Real toi,
     auto results = ProcessContactsOutput{};
     assert(results.contactsUpdated == 0);
     assert(results.contactsSkipped == 0);
-    
+
     const auto updateConf = Contact::GetUpdateConf(conf);
 
     auto processContactFunc = [&](Contact* contact, Body* other)
@@ -1725,7 +1734,7 @@ World::ProcessContactsForTOI(Island& island, Body& body, Real toi,
             {
                 BodyAtty::Advance(*other, toi);
             }
-            
+
             // Update the contact points
             contact->SetEnabled();
             if (contact->NeedsUpdating())
@@ -1737,7 +1746,7 @@ World::ProcessContactsForTOI(Island& island, Body& body, Real toi,
             {
                 ++results.contactsSkipped;
             }
-            
+
             // Revert and skip if contact disabled by user or not touching anymore (very possible).
             if (!contact->IsEnabled() || !contact->IsTouching())
             {
@@ -1800,12 +1809,12 @@ World::ProcessContactsForTOI(Island& island, Body& body, Real toi,
     }
     return results;
 }
-    
+
 StepStats World::Step(const StepConf& conf)
 {
     assert((Length{m_maxVertexRadius} * Real{2}) +
            (Length{conf.linearSlop} / Real{4}) > (Length{m_maxVertexRadius} * Real{2}));
-    
+
     if (IsLocked())
     {
         throw WrongState("World::Step: world is locked");
@@ -1829,7 +1838,7 @@ StepStats World::Step(const StepConf& conf)
         if (HasNewFixtures())
         {
             UnsetNewFixtures();
-            
+
             // New fixtures were added: need to find and create the new contacts.
             // Note: this may update bodies (in addition to the contacts container).
             stepStats.pre.added = FindNewContacts();
@@ -1876,7 +1885,7 @@ void World::ShiftOrigin(Length2 newOrigin)
         auto transformation = b.GetTransformation();
         transformation.p -= newOrigin;
         BodyAtty::SetTransformation(b, transformation);
-        
+
         auto sweep = b.GetSweep();
         sweep.pos0.linear -= newOrigin;
         sweep.pos1.linear -= newOrigin;
@@ -1897,12 +1906,12 @@ void World::InternalDestroy(Contact* contact, Body* from)
         // EndContact hadn't been called in DestroyOrUpdateContacts() since is-touching, so call it now
         m_contactListener->EndContact(*contact);
     }
-    
+
     const auto fixtureA = contact->GetFixtureA();
     const auto fixtureB = contact->GetFixtureB();
     const auto bodyA = fixtureA->GetBody();
     const auto bodyB = fixtureB->GetBody();
-    
+
     if (bodyA != from)
     {
         BodyAtty::Erase(*bodyA, contact);
@@ -1911,7 +1920,7 @@ void World::InternalDestroy(Contact* contact, Body* from)
     {
         BodyAtty::Erase(*bodyB, contact);
     }
-    
+
     if ((contact->GetManifold().GetPointCount() > 0) &&
         !fixtureA->IsSensor() && !fixtureB->IsSensor())
     {
@@ -1920,7 +1929,7 @@ void World::InternalDestroy(Contact* contact, Body* from)
         bodyA->SetAwake();
         bodyB->SetAwake();
     }
-    
+
     delete contact;
 }
 
@@ -1929,7 +1938,7 @@ void World::Destroy(Contact* contact, Body* from)
     assert(contact);
 
     InternalDestroy(contact, from);
-    
+
     const auto it = find_if(cbegin(m_contacts), cend(m_contacts),
                             [&](const Contacts::value_type& c) {
         return GetPtr(std::get<Contact*>(c)) == contact;
@@ -1947,14 +1956,14 @@ World::DestroyContactsStats World::DestroyContacts(Contacts& contacts)
     {
         const auto key = std::get<ContactKey>(c);
         auto& contact = GetRef(std::get<Contact*>(c));
-        
+
         if (!TestOverlap(m_tree, key.GetMin(), key.GetMax()))
         {
             // Destroy contacts that cease to overlap in the broad-phase.
             InternalDestroy(&contact);
             return true;
         }
-        
+
         // Is this contact flagged for filtering?
         if (contact.NeedsFiltering())
         {
@@ -1994,7 +2003,7 @@ World::UpdateContactsStats World::UpdateContacts(Contacts& contacts, const StepC
 #endif
 
     const auto updateConf = Contact::GetUpdateConf(conf);
-    
+
 #if defined(DO_THREADED)
     std::vector<Contact*> contactsNeedingUpdate;
     contactsNeedingUpdate.reserve(size(contacts));
@@ -2012,7 +2021,7 @@ World::UpdateContactsStats World::UpdateContacts(Contacts& contacts, const StepC
 #else
         const auto bodyA = GetBodyA(contact);
         const auto bodyB = GetBodyB(contact);
-        
+
         // Awake && speedable (dynamic or kinematic) means collidable.
         // At least one body must be collidable
         assert(!bodyA->IsAwake() || bodyA->IsSpeedable());
@@ -2023,7 +2032,7 @@ World::UpdateContactsStats World::UpdateContacts(Contacts& contacts, const StepC
             ++ignored;
             return;
         }
-        
+
         // Possible that bodyA->GetSweep().GetAlpha0() != 0
         // Possible that bodyB->GetSweep().GetAlpha0() != 0
 
@@ -2054,7 +2063,7 @@ World::UpdateContactsStats World::UpdateContacts(Contacts& contacts, const StepC
         }
 #endif
     });
-    
+
 #if defined(DO_THREADED)
     auto numJobs = size(contactsNeedingUpdate);
     const auto jobsPerCore = numJobs / 4;
@@ -2084,7 +2093,7 @@ World::UpdateContactsStats World::UpdateContacts(Contacts& contacts, const StepC
         future.get();
     }
 #endif
-    
+
     return UpdateContactsStats{
         static_cast<ContactCounter>(ignored),
         static_cast<ContactCounter>(updated),
@@ -2160,13 +2169,13 @@ bool World::Add(ContactKey key)
     }
 #endif
     assert(bodyA != bodyB);
-    
+
     // Does a joint override collision? Is at least one body dynamic?
     if (!ShouldCollide(*bodyB, *bodyA) || !ShouldCollide(*fixtureA, *fixtureB))
     {
         return false;
     }
-   
+
 #ifndef NO_RACING
     // Code herein may be racey in a multithreaded context...
     // Would need a lock on bodyA, bodyB, and m_contacts.
@@ -2203,7 +2212,7 @@ bool World::Add(ContactKey key)
     //     set, map.
     const auto searchBody = (size(bodyA->GetContacts()) < size(bodyB->GetContacts()))?
         bodyA: bodyB;
-    
+
     const auto contacts = searchBody->GetContacts();
     const auto it = find_if(cbegin(contacts), cend(contacts), [&](KeyedContactPtr ci) {
         return std::get<ContactKey>(ci) == key;
@@ -2212,7 +2221,7 @@ bool World::Add(ContactKey key)
     {
         return false;
     }
-    
+
     assert(size(m_contacts) < MaxContacts);
     if (size(m_contacts) >= MaxContacts)
     {
@@ -2221,7 +2230,7 @@ bool World::Add(ContactKey key)
     }
 
     const auto contact = new Contact{fixtureA, indexA, fixtureB, indexB};
-    
+
     // Insert into the contacts container.
     //
     // Should the new contact be added at front or back?
@@ -2344,10 +2353,10 @@ void World::SetType(Body& body, playrho::BodyType type)
     {
         throw WrongState("World::SetType: world is locked");
     }
-    
+
     BodyAtty::SetTypeFlags(body, type);
     body.ResetMassData();
-    
+
     // Destroy the attached contacts.
     BodyAtty::EraseContacts(body, [&](Contact& contact) {
         Destroy(&contact, &body);
@@ -2395,12 +2404,12 @@ Fixture* World::CreateFixture(Body& body, const Shape& shape,
             }
         }
     }
-    
+
     if (IsLocked())
     {
         throw WrongState("World::CreateFixture: world is locked");
     }
-    
+
     //const auto fixture = BodyAtty::CreateFixture(body, shape, def);
     const auto fixture = FixtureAtty::Create(body, def, shape);
     BodyAtty::AddFixture(body, fixture);
@@ -2409,7 +2418,7 @@ Fixture* World::CreateFixture(Body& body, const Shape& shape,
     {
         RegisterForProxies(*fixture);
     }
-    
+
     // Adjust mass properties if needed.
     if (fixture->GetDensity() > 0_kgpm2)
     {
@@ -2419,11 +2428,11 @@ Fixture* World::CreateFixture(Body& body, const Shape& shape,
             body.ResetMassData();
         }
     }
-    
+
     // Let the world know we have a new fixture. This will cause new contacts
     // to be created at the beginning of the next time step.
     SetNewFixtures();
-    
+
     return fixture;
 }
 
@@ -2436,7 +2445,7 @@ bool World::Destroy(Fixture& fixture, bool resetMassData)
     {
         throw WrongState("World::Destroy: world is locked");
     }
-    
+
 #if 0
     /*
      * XXX: Should the destruction listener be called when the user requested that
@@ -2459,7 +2468,7 @@ bool World::Destroy(Fixture& fixture, bool resetMassData)
         }
         return false;
     });
-    
+
     UnregisterForProxies(fixture);
     DestroyProxies(fixture);
 
@@ -2469,24 +2478,24 @@ bool World::Destroy(Fixture& fixture, bool resetMassData)
         return false;
     }
     FixtureAtty::Delete(&fixture);
-    
+
     BodyAtty::SetMassDataDirty(body);
     if (resetMassData)
     {
         body.ResetMassData();
     }
-    
+
     return true;
 }
 
 void World::CreateProxies(Fixture& fixture, Length aabbExtension)
 {
     assert(fixture.GetProxyCount() == 0);
-    
+
     const auto body = fixture.GetBody();
     const auto shape = fixture.GetShape();
     const auto xfm = GetTransformation(fixture);
-    
+
     // Reserve proxy space and create proxies in the broad-phase.
     const auto childCount = GetChildCount(shape);
     auto proxies = std::make_unique<FixtureProxy[]>(childCount);
@@ -2560,7 +2569,7 @@ ContactCounter World::Synchronize(Fixture& fixture,
 {
     assert(::playrho::IsValid(xfm1));
     assert(::playrho::IsValid(xfm2));
-    
+
     auto updatedCount = ContactCounter{0};
     const auto shape = fixture.GetShape();
     const auto proxies = FixtureAtty::GetProxies(fixture);
@@ -2568,7 +2577,7 @@ ContactCounter World::Synchronize(Fixture& fixture,
     for (auto& proxy: proxies)
     {
         const auto treeId = proxy.treeId;
-        
+
         // Compute an AABB that covers the swept shape (may miss some rotation effect).
         const auto aabb = ComputeAABB(GetChild(shape, childIndex), xfm1, xfm2);
         if (!Contains(m_tree.GetAABB(treeId), aabb))
@@ -2642,7 +2651,7 @@ BodyCounter GetAwakeCount(const World& world) noexcept
                                              [&](const World::Bodies::value_type &b) {
                                                  return GetRef(b).IsAwake(); }));
 }
-    
+
 BodyCounter Awaken(World& world) noexcept
 {
     // Can't use count_if since body gets modified.

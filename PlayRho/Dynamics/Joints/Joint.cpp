@@ -32,6 +32,7 @@
 #include <PlayRho/Dynamics/Joints/FrictionJoint.hpp>
 #include <PlayRho/Dynamics/Joints/RopeJoint.hpp>
 #include <PlayRho/Dynamics/Joints/MotorJoint.hpp>
+#include <PlayRho/Dynamics/Joints/GravityJoint.hpp>
 #include <PlayRho/Dynamics/Body.hpp>
 #include <PlayRho/Dynamics/World.hpp>
 #include <PlayRho/Dynamics/Contacts/Contact.hpp>
@@ -68,6 +69,8 @@ Joint* Joint::Create(const JointConf& def)
             return Create<RopeJoint>(static_cast<const RopeJointConf&>(def));
         case JointType::Motor:
             return Create<MotorJoint>(static_cast<const MotorJointConf&>(def));
+        case JointType::Gravity:
+            return Create<GravityJoint>(static_cast<const GravityJointConf&>(def));
         case JointType::Unknown:
             break;
     }

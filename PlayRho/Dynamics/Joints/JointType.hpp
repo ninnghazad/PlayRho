@@ -43,7 +43,8 @@ enum class JointType : std::uint8_t
     Weld,
     Friction,
     Rope,
-    Motor
+    Motor,
+    Gravity
 };
 
 class Joint;
