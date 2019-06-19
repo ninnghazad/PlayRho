@@ -44,7 +44,9 @@ struct GravityJointConf : public JointBuilder<GravityJointConf>
 	/// @brief Super type.
 	using super = JointBuilder<GravityJointConf>;
 
-	PLAYRHO_CONSTEXPR inline GravityJointConf() noexcept: super{JointType::Gravity} {}
+	PLAYRHO_CONSTEXPR inline GravityJointConf() noexcept: super{JointType::Gravity} {
+		collideConnected = true;
+	}
 
 	/// @brief Copy constructor.
 	GravityJointConf(const GravityJointConf& copy) = default;

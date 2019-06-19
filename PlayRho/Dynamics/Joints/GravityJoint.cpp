@@ -99,12 +99,10 @@ void GravityJoint::InitVelocityConstraints(
 	auto& bodyConstraintB = At(bodies, GetBodyB());
 
 	const auto invMassA = bodyConstraintA->GetInvMass();
-	const auto invRotInertiaA = bodyConstraintA->GetInvRotInertia(); // L^-2 M^-1 QP^2
 	const auto invMassB = bodyConstraintB->GetInvMass();
-	const auto invRotInertiaB = bodyConstraintB->GetInvRotInertia(); // L^-2 M^-1 QP^2
 
-	const auto posA = bodyConstraintA->GetPosition();
-	auto velA = bodyConstraintA->GetVelocity();
+	const auto posA = bodyConstraintA->GetPosition(); // Origin, not center of mass??
+	auto velA = bodyConstraintA->GetVelocity(); // Velocity at origin or center of mass?
 
 	const auto posB = bodyConstraintB->GetPosition();
 	auto velB = bodyConstraintB->GetVelocity();
@@ -112,73 +110,44 @@ void GravityJoint::InitVelocityConstraints(
 	const auto qA = UnitVec::Get(posA.angular);
 	const auto qB = UnitVec::Get(posB.angular);
 
-	m_rA = Rotate(Length2{} - bodyConstraintA->GetLocalCenter(), qA);
-	m_rB = Rotate(Length2{} - bodyConstraintB->GetLocalCenter(), qB);
+	m_rA = Rotate(Length2{}, qA);
+	m_rB = Rotate(Length2{}, qB);
+
+	// Distance between centers of mass?
 	const auto deltaLocation = Length2{(posB.linear + m_rB) - (posA.linear + m_rA)};
 
-	//const auto deltaLocation = Length2{posB.linear - posA.linear};
 
-	// Handle singularity.
 	const auto uvresult = UnitVec::Get(deltaLocation[0], deltaLocation[1]);
 	m_u = std::get<UnitVec>(uvresult);
-	//const auto length = std::min(std::get<Length>(uvresult),m_radius);
 	const auto length = std::get<Length>(uvresult);
+	const auto distance = length == 0_m ? 0.01:length;
 
-	const auto crAu = Length{Cross(m_rA, m_u)} / Radian;
-	const auto crBu = Length{Cross(m_rB, m_u)} / Radian;
-	const auto invRotMassA = invRotInertiaA * Square(crAu);
-	const auto invRotMassB = invRotInertiaB * Square(crBu);
-	auto invMass = InvMass{invMassA + invRotMassA + invMassB + invRotMassB};
+	m_inverseDistance = std::max(1.0 / (distance*distance),{});
 
-	//std::cout << "invRotMass " << invRotMassA << " " << invRotMassB << std::endl;
-
-	// Compute the effective mass matrix.
-	m_mass = (invMass != InvMass{0}) ? Real{1} / invMass: 0_kg;
-	auto l = length == 0_m ? 1:length;
-	//const auto C = length - m_radius; // L
-	//const auto C = m_radius - length; // L
-	const auto C = 1.0/(l*l); // L
-
-	// Frequency
-	const auto omega = Real{2} * Pi * m_frequency;
-
-	// Damping coefficient
-	const auto d = Real{2} * m_mass * m_dampingRatio * omega; // M T^-1
-
-	// Spring stiffness
-	const auto k = m_mass * Square(omega); // M T^-2
-
-	// magic formulas
-	const auto h = step.GetTime();
-	const auto gamma = Mass{h * (d + h * k)}; // T (M T^-1 + T M T^-2) = M
-	m_invGamma = (gamma != 0_kg)? Real{1} / gamma: 0;
-	m_bias = C * h * k * m_invGamma; // L T M T^-2 M^-1 = L T^-1
-
-	invMass += m_invGamma;
-	m_mass = (invMass != InvMass{0}) ? Real{1} / invMass: 0;
-/*
 	if (step.doWarmStart)
 	{
-		// Scale the impulse to support a variable time step.
-		m_impulse *= step.dtRatio;
+		const auto invRotInertiaA = bodyConstraintA->GetInvRotInertia();
+		const auto invRotInertiaB = bodyConstraintB->GetInvRotInertia();
 
-		const auto P = m_impulse * m_u;
+		const auto m0 = 1.0 / (invMassA==0?1.0/5510000000000.0:invMassA);
+		const auto m1 = 1.0 / (invMassB==0?1:invMassB);
+		const auto impulse = LinearAcceleration{
+			(BigG * m0 * m1) * m_inverseDistance
+		} * step.GetTime();
 
-		// P is M L T^-2
-		// Cross(Length2, P) is: M L^2 T^-1
-		// inv rotational inertia is: L^-2 M^-1 QP^2
-		// Product is: L^-2 M^-1 QP^2 M L^2 T^-1 = QP^2 T^-1
-		const auto LA = Cross(m_rA, P) / Radian;
-		const auto LB = Cross(m_rB, P) / Radian;
-		velA -= Velocity{invMassA * P, invRotInertiaA * LA};
-		velB += Velocity{invMassB * P, invRotInertiaB * LB};
+		const auto P = impulse * m_u;
+		const auto LA = Cross(m_rA, -P) / Radian;
+		const auto LB = Cross(m_rB, -P) / Radian;
+		velA -= Velocity{invMassA * -P, invRotInertiaA * LA};
+		velB += Velocity{invMassB * -P, invRotInertiaB * LB};
+
+		m_impulse = impulse;
 	}
 	else
 	{
 		m_impulse = 0;
 	}
-*/
-	m_bias = 1_m / l;
+
 
 	bodyConstraintA->SetVelocity(velA);
 	bodyConstraintB->SetVelocity(velB);
@@ -197,29 +166,24 @@ bool GravityJoint::SolveVelocityConstraints(BodyConstraintsMap& bodies, const St
 	auto velA = bodyConstraintA->GetVelocity();
 	auto velB = bodyConstraintB->GetVelocity();
 
-	// Cdot = dot(u, v + cross(w, r))
-	const auto vpA = velA.linear + GetRevPerpendicular(m_rA) * (velA.angular / Radian);
-	const auto vpB = velB.linear + GetRevPerpendicular(m_rB) * (velB.angular / Radian);
-	const auto Cdot = LinearVelocity{Dot(m_u, vpB - vpA)};
-
-	//const auto impulse = Momentum{-m_mass * (Cdot + m_bias + m_invGamma * m_impulse)};
+	const auto m0 = 1.0 / (invMassA==0?1.0/5510000000.0:invMassA);
+	const auto m1 = 1.0 / (invMassB==0?1:invMassB);
 	const auto impulse = LinearAcceleration{
-		6.674 / ((invMassA==0?1:invMassA) * (invMassB==0?1:invMassB) / ( m_bias * m_bias))
-	} *  step.GetTime();
-	std::cout << step.GetTime() << " " << BigG << " " << invMassA << " " << invMassB << " " << m_bias << " " << m_impulse << " " << impulse << std::endl;
+		(BigG * m0 * m1) * m_inverseDistance
+	} * step.GetTime();
+
 	auto old = m_impulse;
 	m_impulse = impulse;
 
 	const auto P = impulse * m_u;
-	const auto LA = Cross(m_rA, P) / Radian;
-	const auto LB = Cross(m_rB, P) / Radian;
-	velA -= Velocity{invMassA * P, invRotInertiaA * LA};
-	velB += Velocity{invMassB * P, invRotInertiaB * LB};
+	const auto LA = Cross(m_rA, -P) / Radian;
+	const auto LB = Cross(m_rB, -P) / Radian;
+	velA -= Velocity{invMassA * -P, invRotInertiaA * LA};
+	velB += Velocity{invMassB * -P, invRotInertiaB * LB};
 
 	bodyConstraintA->SetVelocity(velA);
 	bodyConstraintB->SetVelocity(velB);
 	return old == m_impulse;
-	//return impulse == 0_Ns;
 }
 
 bool GravityJoint::SolvePositionConstraints(BodyConstraintsMap& bodies, const ConstraintSolverConf& conf) const

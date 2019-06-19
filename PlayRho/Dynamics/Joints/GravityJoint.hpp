@@ -114,7 +114,7 @@ private:
 
 	// Solver variables. These are only valid after InitVelocityConstraints called.
 	InvMass m_invGamma; ///< Inverse gamma.
-	LinearVelocity m_bias; ///< Bias.
+	LinearVelocity m_inverseDistance; ///< Inverse Distance.
 	UnitVec m_u; ///< "u" directional.
 	Length2 m_rA; ///< Relative A position.
 	Length2 m_rB; ///< Relative B position.

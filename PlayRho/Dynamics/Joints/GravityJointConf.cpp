@@ -30,7 +30,7 @@ GravityJointConf::GravityJointConf(NonNull<Body*> bA, NonNull<Body*> bB, Length 
 	super{super{JointType::Gravity}.UseBodyA(bA).UseBodyB(bB)},
 	radius{r}
 {
-	// Intentionally empty.
+	collideConnected = true;
 }
 
 GravityJointConf GetGravityJointConf(const GravityJoint& joint) noexcept
