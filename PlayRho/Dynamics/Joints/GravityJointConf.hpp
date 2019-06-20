@@ -53,24 +53,19 @@ struct GravityJointConf : public JointBuilder<GravityJointConf>
 
 	/// @brief Initializing constructor.
 	/// @details Initialize the bodies, anchors, and length using the world anchors.
-	GravityJointConf(NonNull<Body*> bodyA, NonNull<Body*> bodyB, Length r) noexcept;
+	GravityJointConf(NonNull<Body*> bodyA, NonNull<Body*> bodyB, Length r, Real f) noexcept;
 
 	/// @brief Uses the given length.
 	PLAYRHO_CONSTEXPR inline GravityJointConf& UseRadius(Length v) noexcept;
 
 	/// @brief Use value for max force.
-	PLAYRHO_CONSTEXPR inline GravityJointConf& UseMaxForce(NonNegative<Force> v) noexcept;
+	PLAYRHO_CONSTEXPR inline GravityJointConf& UseFactor(Real v) noexcept;
 
 	/// @brief Natural length between the anchor points.
-	Length radius = 1_m;
+	Length radius{1_m};
 
-	/// Max force.
-	/// @details
-	/// The maximum constraint force that can be exerted
-	/// to move the candidate body. Usually you will express
-	/// as some multiple of the weight (multiplier * mass * gravity).
-	/// @note This may not be negative.
-	NonNegative<Force> maxForce = NonNegative<Force>{0_N};
+	/// @brief A simple factor to scale the strength of gravitational pull
+	Real factor{10};
 };
 
 PLAYRHO_CONSTEXPR inline GravityJointConf& GravityJointConf::UseRadius(Length v) noexcept
@@ -79,9 +74,9 @@ PLAYRHO_CONSTEXPR inline GravityJointConf& GravityJointConf::UseRadius(Length v)
 	return *this;
 }
 
-PLAYRHO_CONSTEXPR inline GravityJointConf& GravityJointConf::UseMaxForce(NonNegative<Force> v) noexcept
+PLAYRHO_CONSTEXPR inline GravityJointConf& GravityJointConf::UseFactor(Real v) noexcept
 {
-	maxForce = v;
+	factor = v;
 	return *this;
 }
 
