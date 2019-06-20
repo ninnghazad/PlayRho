@@ -40,8 +40,6 @@ GravityJointConf GetGravityJointConf(const GravityJoint& joint) noexcept
 	Set(def, joint);
 
 	def.radius = joint.GetRadius();
-	def.frequency = joint.GetFrequency();
-	def.dampingRatio = joint.GetDampingRatio();
 
 	return def;
 }

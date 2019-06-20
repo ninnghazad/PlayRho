@@ -77,18 +77,6 @@ public:
 	/// @brief Gets the maximum force.
 	NonNegative<Force> GetMaxForce() const noexcept;
 
-	/// @brief Sets frequency.
-	void SetFrequency(Positive<Frequency> frequency) noexcept;
-
-	/// @brief Gets the frequency.
-	Positive<Frequency> GetFrequency() const noexcept;
-
-	/// @brief Sets the damping ratio.
-	void SetDampingRatio(Real ratio) noexcept;
-
-	/// @brief Gets damping ratio.
-	Real GetDampingRatio() const noexcept;
-
 private:
 
 	void InitVelocityConstraints(BodyConstraintsMap& bodies, const playrho::StepConf& step,
@@ -97,31 +85,20 @@ private:
 	bool SolvePositionConstraints(BodyConstraintsMap& bodies,
 								  const ConstraintSolverConf& conf) const override;
 
-	/// @brief Gets the effective mass matrix.
-	Mass22 GetEffectiveMassMatrix(const BodyConstraint& body) const noexcept;
-
 	Length m_radius; ///< Radius.
-	Positive<Frequency> m_frequency = Positive<Frequency>{1_Hz}; ///< Frequency.
-	Real m_dampingRatio; ///< Damping ratio.
-
 	NonNegative<Force> m_maxForce = NonNegative<Force>{0_N}; ///< Max force.
-	InvMass m_gamma = InvMass{0}; ///< Gamma.
-
-
+	Real m_factor;
+	
 	// Solver shared
 	Momentum m_impulse = 0_Ns; ///< Impulse.
-	//Momentum2 m_impulse = Momentum2{}; ///< Impulse.
 
 	// Solver variables. These are only valid after InitVelocityConstraints called.
-	InvMass m_invGamma; ///< Inverse gamma.
 	LinearVelocity m_inverseDistance; ///< Inverse Distance.
 	UnitVec m_u; ///< "u" directional.
 	Length2 m_rA; ///< Relative A position.
 	Length2 m_rB; ///< Relative B position.
-
-	Mass m_mass; ///< Mass.
-	//Mass22 m_mass; ///< 2-by-2 mass matrix in kilograms.
-	LinearVelocity2 m_C; ///< Velocity constant.
+	Mass m_massA;
+	Mass m_massB;
 };
 
 inline void GravityJoint::SetRadius(Length radius) noexcept
@@ -144,25 +121,6 @@ inline NonNegative<Force> GravityJoint::GetMaxForce() const noexcept
 	return m_maxForce;
 }
 
-inline void GravityJoint::SetFrequency(Positive<Frequency> hz) noexcept
-{
-	m_frequency = hz;
-}
-
-inline Positive<Frequency> GravityJoint::GetFrequency() const noexcept
-{
-	return m_frequency;
-}
-
-inline void GravityJoint::SetDampingRatio(Real ratio) noexcept
-{
-	m_dampingRatio = ratio;
-}
-
-inline Real GravityJoint::GetDampingRatio() const noexcept
-{
-	return m_dampingRatio;
-}
 
 /*
 /// @brief Gravity Joint.

@@ -48,13 +48,9 @@ bool GravityJoint::IsOkay(const GravityJointConf& def) noexcept
 
 GravityJoint::GravityJoint(const GravityJointConf& def):
 	Joint{def},
-	m_frequency{def.frequency},
-	m_dampingRatio{def.dampingRatio},
 	m_maxForce{def.maxForce},
 	m_radius{def.radius}
 {
-	//assert(IsValid(def.gravity));
-	assert(IsValid(def.dampingRatio));
 }
 
 void GravityJoint::Accept(JointVisitor& visitor) const
@@ -65,29 +61,6 @@ void GravityJoint::Accept(JointVisitor& visitor) const
 void GravityJoint::Accept(JointVisitor& visitor)
 {
 	visitor.Visit(*this);
-}
-
-Mass22 GravityJoint::GetEffectiveMassMatrix(const BodyConstraint& body) const noexcept
-{
-	// K	= [(1/m1 + 1/m2) * eye(2) - skew(r1) * invI1 * skew(r1) - skew(r2) * invI2 * skew(r2)]
-	//	  = [1/m1+1/m2	 0	] + invI1 * [r1.y*r1.y -r1.x*r1.y] + invI2 * [r1.y*r1.y -r1.x*r1.y]
-	//		[	0	 1/m1+1/m2]		   [-r1.x*r1.y r1.x*r1.x]		   [-r1.x*r1.y r1.x*r1.x]
-/*
-	const auto invMass = body.GetInvMass();
-	const auto invRotInertia = body.GetInvRotInertia();
-
-	const auto exx = InvMass{invMass + (invRotInertia * Square(GetY(m_rB)) / SquareRadian) + m_gamma};
-	const auto exy = InvMass{-invRotInertia * GetX(m_rB) * GetY(m_rB) / SquareRadian};
-	const auto eyy = InvMass{invMass + (invRotInertia * Square(GetX(m_rB)) / SquareRadian) + m_gamma};
-
-	InvMass22 K;
-	GetX(GetX(K)) = exx;
-	GetY(GetX(K)) = exy;
-	GetX(GetY(K)) = exy;
-	GetY(GetY(K)) = eyy;
-	return Invert(K);
-*/
-	return {};
 }
 
 void GravityJoint::InitVelocityConstraints(
@@ -117,31 +90,49 @@ void GravityJoint::InitVelocityConstraints(
 	const auto deltaLocation = Length2{(posB.linear + m_rB) - (posA.linear + m_rA)};
 
 
+	m_factor = 10;
+	if(invMassA == 0) {
+		// const auto mass = ComputeMassData(*GetBodyA());
+		// m_massA = mass.mass;
+		m_massA = 1;
+	//	std::cout << "MASS override A: " << m_massA << std::endl;
+	}
+	if(invMassB == 0) {
+		// const auto mass = ComputeMassData(*GetBodyB());
+		// m_massB = mass.mass;
+		m_massB = 1;
+	//	std::cout << "MASS override B: " << m_massB << std::endl;
+	}
+
 	const auto uvresult = UnitVec::Get(deltaLocation[0], deltaLocation[1]);
 	m_u = std::get<UnitVec>(uvresult);
 	const auto length = std::get<Length>(uvresult);
 	const auto distance = length == 0_m ? 0.01:length;
 
-	m_inverseDistance = std::max(1.0 / (distance*distance),{});
+	m_inverseDistance = (1.0 / (distance*distance)) - (1.0 / (m_radius*m_radius));
+
+	//m_inverseDistance = playrho::pow(std::clamp(Real{1} - distance/m_radius,Real{0},Real{1}),2);
 
 	if (step.doWarmStart)
 	{
 		const auto invRotInertiaA = bodyConstraintA->GetInvRotInertia();
 		const auto invRotInertiaB = bodyConstraintB->GetInvRotInertia();
 
-		const auto m0 = 1.0 / (invMassA==0?1.0/5510000000000.0:invMassA);
-		const auto m1 = 1.0 / (invMassB==0?1:invMassB);
-		const auto impulse = LinearAcceleration{
-			(BigG * m0 * m1) * m_inverseDistance
+		const auto m0 = (invMassA == 0) ? m_massA : (1.0/invMassA);
+		const auto m1 = (invMassB == 0) ? m_massB : (1.0/invMassB);
+
+		m_impulse = LinearAcceleration{
+			//(((BigG * m_inverseDistance) * m0) * m1) * m_factor
+			(((m_inverseDistance) * m0) * m1) * m_factor
+			//m_inverseDistance * m_factor
 		} * step.GetTime();
 
-		const auto P = impulse * m_u;
+		const auto P = m_impulse * m_u;
 		const auto LA = Cross(m_rA, -P) / Radian;
 		const auto LB = Cross(m_rB, -P) / Radian;
 		velA -= Velocity{invMassA * -P, invRotInertiaA * LA};
 		velB += Velocity{invMassB * -P, invRotInertiaB * LB};
 
-		m_impulse = impulse;
 	}
 	else
 	{
@@ -166,16 +157,19 @@ bool GravityJoint::SolveVelocityConstraints(BodyConstraintsMap& bodies, const St
 	auto velA = bodyConstraintA->GetVelocity();
 	auto velB = bodyConstraintB->GetVelocity();
 
-	const auto m0 = 1.0 / (invMassA==0?1.0/5510000000.0:invMassA);
-	const auto m1 = 1.0 / (invMassB==0?1:invMassB);
-	const auto impulse = LinearAcceleration{
-		(BigG * m0 * m1) * m_inverseDistance
+	const auto oldImpulse = m_impulse;
+
+	const auto m0 = (invMassA == 0) ? m_massA : (1.0/invMassA);
+	const auto m1 = (invMassB == 0) ? m_massB : (1.0/invMassB);
+
+	m_impulse = LinearAcceleration{
+		// (((BigG * m_inverseDistance) * m0) * m1) * m_factor
+		(((m_inverseDistance) * m0) * m1) * m_factor
+
+		//m_inverseDistance * m_factor
 	} * step.GetTime();
 
-	auto old = m_impulse;
-	m_impulse = impulse;
-
-	const auto P = impulse * m_u;
+	const auto P = m_impulse * m_u;
 	const auto LA = Cross(m_rA, -P) / Radian;
 	const auto LB = Cross(m_rB, -P) / Radian;
 	velA -= Velocity{invMassA * -P, invRotInertiaA * LA};
@@ -183,7 +177,7 @@ bool GravityJoint::SolveVelocityConstraints(BodyConstraintsMap& bodies, const St
 
 	bodyConstraintA->SetVelocity(velA);
 	bodyConstraintB->SetVelocity(velB);
-	return old == m_impulse;
+	return oldImpulse == m_impulse;
 }
 
 bool GravityJoint::SolvePositionConstraints(BodyConstraintsMap& bodies, const ConstraintSolverConf& conf) const

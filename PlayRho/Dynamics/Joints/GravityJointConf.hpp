@@ -61,12 +61,6 @@ struct GravityJointConf : public JointBuilder<GravityJointConf>
 	/// @brief Use value for max force.
 	PLAYRHO_CONSTEXPR inline GravityJointConf& UseMaxForce(NonNegative<Force> v) noexcept;
 
-	/// @brief Uses the given frequency.
-	PLAYRHO_CONSTEXPR inline GravityJointConf& UseFrequency(Positive<Frequency> v) noexcept;
-
-	/// @brief Uses the given damping ratio.
-	PLAYRHO_CONSTEXPR inline GravityJointConf& UseDampingRatio(Real v) noexcept;
-
 	/// @brief Natural length between the anchor points.
 	Length radius = 1_m;
 
@@ -77,14 +71,6 @@ struct GravityJointConf : public JointBuilder<GravityJointConf>
 	/// as some multiple of the weight (multiplier * mass * gravity).
 	/// @note This may not be negative.
 	NonNegative<Force> maxForce = NonNegative<Force>{0_N};
-
-	/// @brief Mass-spring-damper frequency.
-	/// @note 0 disables softness.
-	Positive<Frequency> frequency = Positive<Frequency>{1_Hz};
-
-	/// @brief Damping ratio.
-	/// @note 0 = no damping, 1 = critical damping.
-	Real dampingRatio = 0;
 };
 
 PLAYRHO_CONSTEXPR inline GravityJointConf& GravityJointConf::UseRadius(Length v) noexcept
@@ -96,18 +82,6 @@ PLAYRHO_CONSTEXPR inline GravityJointConf& GravityJointConf::UseRadius(Length v)
 PLAYRHO_CONSTEXPR inline GravityJointConf& GravityJointConf::UseMaxForce(NonNegative<Force> v) noexcept
 {
 	maxForce = v;
-	return *this;
-}
-
-PLAYRHO_CONSTEXPR inline GravityJointConf& GravityJointConf::UseFrequency(Positive<Frequency> v) noexcept
-{
-	frequency = v;
-	return *this;
-}
-
-PLAYRHO_CONSTEXPR inline GravityJointConf& GravityJointConf::UseDampingRatio(Real v) noexcept
-{
-	dampingRatio = v;
 	return *this;
 }
 
