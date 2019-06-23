@@ -68,6 +68,8 @@ void GravityJoint::InitVelocityConstraints(
 	const StepConf& step,
 	const ConstraintSolverConf&
 ) {
+//	std::cout << __PRETTY_FUNCTION__ << std::endl;
+
 	auto& bodyConstraintA = At(bodies, GetBodyA());
 	auto& bodyConstraintB = At(bodies, GetBodyB());
 
@@ -103,14 +105,17 @@ void GravityJoint::InitVelocityConstraints(
 	// Inspired by real gravity, but without G and with a shift and factor
 	m_impulse = std::max(((1.0 / (distance*distance)) - (1.0 / (m_radius*m_radius))),Real{0}) * m0 * m1 * m_factor * u;
 	m_lastStep = step.GetTime();
-/*
-	std::cout << "GravityJoint: "  << m_impulse[0] << "x" << m_impulse[1] << " " << m_factor << " " << m0 << " " << m1
+
+	std::cout << "GravityJoint: " << (step.doWarmStart?"WARM":"COLD") << " " << m_impulse[0] << "x" << m_impulse[1] << " " << m_factor << " " << m0 << " " << m1
 	<< " fd: " <<  std::max(((1.0 / (distance*distance)) - (1.0 / (m_radius*m_radius))),Real{0})
-	<< " d: " << length
-	<< " d0: " << (1.0 / (distance*distance))
-	<< " r0: " << (1.0 / (m_radius*m_radius))
+	<< " V: " << velA.linear[0] << "x" << velA.linear[1] << " " << velB.linear[0] << "x" << velB.linear[1]
+	<< " P: " << posA.linear[0] << "x" << posA.linear[1] << " " << posB.linear[0] << "x" << posB.linear[1]
+	// << " d: " << length
+	// << " d0: " << (1.0 / (distance*distance))
+	// << " r0: " << (1.0 / (m_radius*m_radius))
 	<< std::endl;
-*/
+
+
 	if (step.doWarmStart)
 	{
 		const auto invRotInertiaA = bodyConstraintA->GetInvRotInertia();
@@ -124,6 +129,7 @@ void GravityJoint::InitVelocityConstraints(
 	}
 	else
 	{
+		m_lastStep =0;
 		m_impulse = Momentum2{};
 	}
 
@@ -144,6 +150,11 @@ bool GravityJoint::SolveVelocityConstraints(BodyConstraintsMap& bodies, const St
 	auto velA = bodyConstraintA->GetVelocity();
 	auto velB = bodyConstraintB->GetVelocity();
 
+	std::cout << __PRETTY_FUNCTION__
+	<< " V: " << velA.linear[0] << "x" << velA.linear[1] << " " << velB.linear[0] << "x" << velB.linear[1]
+	//<< " P: " << posA.linear[0] << "x" << posA.linear[1] << " " << posB.linear[0] << "x" << posB.linear[1]
+	<< std::endl;
+
 	const auto oldStep = m_lastStep;
 	m_lastStep = step.GetTime();
 
@@ -155,6 +166,7 @@ bool GravityJoint::SolveVelocityConstraints(BodyConstraintsMap& bodies, const St
 
 	bodyConstraintA->SetVelocity(velA);
 	bodyConstraintB->SetVelocity(velB);
+	return true;
 	return oldStep == m_lastStep;
 }
 
