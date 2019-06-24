@@ -72,22 +72,10 @@ public:
 	Length GetRadius() const noexcept;
 
 	/// @brief Sets the maximum force.
-	void SetMaxForce(NonNegative<Force> force) noexcept;
+	void SetFactor(NonNegative<Real> force) noexcept;
 
 	/// @brief Gets the maximum force.
-	NonNegative<Force> GetMaxForce() const noexcept;
-
-	/// @brief Sets frequency.
-	void SetFrequency(Positive<Frequency> frequency) noexcept;
-
-	/// @brief Gets the frequency.
-	Positive<Frequency> GetFrequency() const noexcept;
-
-	/// @brief Sets the damping ratio.
-	void SetDampingRatio(Real ratio) noexcept;
-
-	/// @brief Gets damping ratio.
-	Real GetDampingRatio() const noexcept;
+	NonNegative<Real> GetFactor() const noexcept;
 
 private:
 
@@ -97,31 +85,18 @@ private:
 	bool SolvePositionConstraints(BodyConstraintsMap& bodies,
 								  const ConstraintSolverConf& conf) const override;
 
-	/// @brief Gets the effective mass matrix.
-	Mass22 GetEffectiveMassMatrix(const BodyConstraint& body) const noexcept;
-
-	Length m_radius; ///< Radius.
-	Positive<Frequency> m_frequency = Positive<Frequency>{1_Hz}; ///< Frequency.
-	Real m_dampingRatio; ///< Damping ratio.
-
-	NonNegative<Force> m_maxForce = NonNegative<Force>{0_N}; ///< Max force.
-	InvMass m_gamma = InvMass{0}; ///< Gamma.
-
+	Length m_radius{100}; ///< Radius.
+	Real m_factor{10};
 
 	// Solver shared
-	Momentum m_impulse = 0_Ns; ///< Impulse.
-	//Momentum2 m_impulse = Momentum2{}; ///< Impulse.
-
 	// Solver variables. These are only valid after InitVelocityConstraints called.
-	InvMass m_invGamma; ///< Inverse gamma.
-	LinearVelocity m_inverseDistance; ///< Inverse Distance.
-	UnitVec m_u; ///< "u" directional.
 	Length2 m_rA; ///< Relative A position.
 	Length2 m_rB; ///< Relative B position.
 
-	Mass m_mass; ///< Mass.
-	//Mass22 m_mass; ///< 2-by-2 mass matrix in kilograms.
-	LinearVelocity2 m_C; ///< Velocity constant.
+	Momentum2 m_impulse;
+	Time m_lastStep;
+
+	constexpr static auto m_inverseRadian{1.0/Radian};
 };
 
 inline void GravityJoint::SetRadius(Length radius) noexcept
@@ -134,161 +109,16 @@ inline Length GravityJoint::GetRadius() const noexcept
 	return m_radius;
 }
 
-inline void GravityJoint::SetMaxForce(NonNegative<Force> force) noexcept
+inline void GravityJoint::SetFactor(NonNegative<Real> factor) noexcept
 {
-	m_maxForce = force;
+	m_factor = factor;
 }
 
-inline NonNegative<Force> GravityJoint::GetMaxForce() const noexcept
+inline NonNegative<Real> GravityJoint::GetFactor() const noexcept
 {
-	return m_maxForce;
+	return m_factor;
 }
 
-inline void GravityJoint::SetFrequency(Positive<Frequency> hz) noexcept
-{
-	m_frequency = hz;
-}
-
-inline Positive<Frequency> GravityJoint::GetFrequency() const noexcept
-{
-	return m_frequency;
-}
-
-inline void GravityJoint::SetDampingRatio(Real ratio) noexcept
-{
-	m_dampingRatio = ratio;
-}
-
-inline Real GravityJoint::GetDampingRatio() const noexcept
-{
-	return m_dampingRatio;
-}
-
-/*
-/// @brief Gravity Joint.
-///
-/// @details A gravity joint is used to make a point on a body track a
-///   specified world point. This a soft constraint with a maximum
-///   force. This allows the constraint to stretch and without
-///   applying huge forces.
-/// @note This structure is 120-bytes large (using a 4-byte Real on at least one 64-bit
-///   architecture/build).
-///
-/// @ingroup JointsGroup
-///
-class GravityJoint : public Joint
-{
-public:
-
-	/// @brief Is the given definition okay.
-	static bool IsOkay(const GravityJointConf& def) noexcept;
-
-	/// @brief Initializing constructor.
-	/// @attention To create or use the joint within a world instance, call that world
-	///   instance's create joint method instead of calling this constructor directly.
-	/// @sa World::CreateJoint
-	GravityJoint(const GravityJointConf& def);
-
-	void Accept(JointVisitor& visitor) const override;
-	void Accept(JointVisitor& visitor) override;
-	Length2 GetAnchorA() const override;
-	Length2 GetAnchorB() const override;
-	Momentum2 GetLinearReaction() const override;
-	AngularMomentum GetAngularReaction() const override;
-	bool ShiftOrigin(const Length2 newOrigin) override;
-
-	/// @brief Gets the local anchor B.
-	Length2 GetLocalAnchorB() const noexcept;
-
-	/// @brief Sets the gravity point.
-	void SetGravity(const Length2 gravity) noexcept;
-
-	/// @brief Gets the gravity point.
-	Length2 GetTarget() const noexcept;
-
-	/// @brief Sets the maximum force.
-	void SetMaxForce(NonNegative<Force> force) noexcept;
-
-	/// @brief Gets the maximum force.
-	NonNegative<Force> GetMaxForce() const noexcept;
-
-	/// @brief Sets the frequency.
-	void SetFrequency(NonNegative<Frequency> hz) noexcept;
-
-	/// @brief Gets the frequency.
-	NonNegative<Frequency> GetFrequency() const noexcept;
-
-	/// @brief Sets the damping ratio.
-	void SetDampingRatio(NonNegative<Real> ratio) noexcept;
-
-	/// @brief Gets the damping ratio.
-	NonNegative<Real> GetDampingRatio() const noexcept;
-
-private:
-	void InitVelocityConstraints(BodyConstraintsMap& bodies, const StepConf& step,
-								 const ConstraintSolverConf& conf) override;
-	bool SolveVelocityConstraints(BodyConstraintsMap& bodies, const StepConf& step) override;
-	bool SolvePositionConstraints(BodyConstraintsMap& bodies,
-								  const ConstraintSolverConf& conf) const override;
-
-	/// @brief Gets the effective mass matrix.
-	Mass22 GetEffectiveMassMatrix(const BodyConstraint& body) const noexcept;
-
-	Length2 m_targetA; ///< Gravity location (A).
-	Length2 m_localAnchorB; ///< Local anchor B.
-	NonNegative<Frequency> m_frequency = NonNegative<Frequency>{0_Hz}; ///< Frequency.
-	NonNegative<Real> m_dampingRatio = NonNegative<Real>{0}; ///< Damping ratio.
-	NonNegative<Force> m_maxForce = NonNegative<Force>{0_N}; ///< Max force.
-	InvMass m_gamma = InvMass{0}; ///< Gamma.
-
-	Momentum2 m_impulse = Momentum2{}; ///< Impulse.
-
-	// Solver variables. These are only valid after InitVelocityConstraints called.
-	Length2 m_rB; ///< Relative B.
-	Mass22 m_mass; ///< 2-by-2 mass matrix in kilograms.
-	LinearVelocity2 m_C; ///< Velocity constant.
-};
-
-inline Length2 GravityJoint::GetLocalAnchorB() const noexcept
-{
-	return m_localAnchorB;
-}
-
-inline Length2 GravityJoint::GetTarget() const noexcept
-{
-	return m_targetA;
-}
-
-inline void GravityJoint::SetMaxForce(NonNegative<Force> force) noexcept
-{
-	m_maxForce = force;
-}
-
-inline NonNegative<Force> GravityJoint::GetMaxForce() const noexcept
-{
-	return m_maxForce;
-}
-
-inline void GravityJoint::SetFrequency(NonNegative<Frequency> hz) noexcept
-{
-	m_frequency = hz;
-}
-
-inline NonNegative<Frequency> GravityJoint::GetFrequency() const noexcept
-{
-	return m_frequency;
-}
-
-inline void GravityJoint::SetDampingRatio(NonNegative<Real> ratio) noexcept
-{
-	m_dampingRatio = ratio;
-}
-
-inline NonNegative<Real> GravityJoint::GetDampingRatio() const noexcept
-{
-	return m_dampingRatio;
-}
-*/
 } // namespace d2
 } // namespace playrho
 
