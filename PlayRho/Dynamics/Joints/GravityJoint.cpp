@@ -24,6 +24,7 @@
 #include <PlayRho/Dynamics/Body.hpp>
 #include <PlayRho/Dynamics/StepConf.hpp>
 #include <PlayRho/Dynamics/Contacts/BodyConstraint.hpp>
+#include <PlayRho/Dynamics/Contacts/ContactSolver.hpp>
 
 namespace playrho {
 namespace d2 {
@@ -178,9 +179,33 @@ bool GravityJoint::SolveVelocityConstraints(BodyConstraintsMap& bodies, const St
 
 bool GravityJoint::SolvePositionConstraints(BodyConstraintsMap& bodies, const ConstraintSolverConf& conf) const
 {
-	NOT_USED(bodies);
-	NOT_USED(conf);
-	return true;
+	// NOT_USED(bodies);
+	// NOT_USED(conf);
+	// return true;
+
+	auto& bodyConstraintB = At(bodies, GetBodyB());
+	auto posB = bodyConstraintB->GetPosition();
+
+	const auto targetU = UnitVec::Get(m_impulse[0],m_impulse[1]).first;
+
+	const auto targetAngle = GetAngle(targetU.Rotate(UnitVec::GetTop()));
+	const auto err = abs(posB.angular - targetAngle);
+
+	posB.angular = targetAngle;
+	bodyConstraintB->SetPosition(posB);
+
+	std::cout << "GRAVROTA " << targetAngle << " "
+	<< GetAngle(targetU.Rotate(UnitVec::GetRight())) << " "
+	<< GetAngle(targetU.Rotate(UnitVec::GetTop())) << " "
+	<< GetAngle(targetU.Rotate(UnitVec::GetLeft()))
+	<< " slop: " << conf.angularSlop << " err: " << err << " "
+	<< bodyConstraintB->GetPosition().angular
+	<< std::endl;
+
+
+
+	//return true;
+	return err < conf.angularSlop;
 }
 
 
