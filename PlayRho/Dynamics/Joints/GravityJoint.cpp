@@ -26,16 +26,11 @@
 #include <PlayRho/Dynamics/Contacts/BodyConstraint.hpp>
 #include <PlayRho/Dynamics/Contacts/ContactSolver.hpp>
 
+#include <PlayRho/Common/Math.hpp>
+
+
 namespace playrho {
 namespace d2 {
-
-// p = attached point, m = mouse point
-// C = p - m
-// Cdot = v
-//	  = v + cross(w, r)
-// J = [I r_skew]
-// Identity used:
-// w k % (rx i + ry j) = w * (-ry i + rx j)
 
 
 bool GravityJoint::IsOkay(const GravityJointConf& def) noexcept
@@ -182,6 +177,8 @@ bool GravityJoint::SolvePositionConstraints(BodyConstraintsMap& bodies, const Co
 	// NOT_USED(bodies);
 	// NOT_USED(conf);
 	// return true;
+
+
 
 	auto& bodyConstraintB = At(bodies, GetBodyB());
 	auto posB = bodyConstraintB->GetPosition();
