@@ -190,7 +190,7 @@ bool GravityJoint::SolvePositionConstraints(BodyConstraintsMap& bodies, const Co
 
 	posB.angular = targetAngle;
 	bodyConstraintB->SetPosition(posB);
-
+/*
 	std::cout << "GRAVROTA " << targetAngle << " "
 	<< GetAngle(targetU.Rotate(UnitVec::GetRight())) << " "
 	<< GetAngle(targetU.Rotate(UnitVec::GetTop())) << " "
@@ -198,9 +198,7 @@ bool GravityJoint::SolvePositionConstraints(BodyConstraintsMap& bodies, const Co
 	<< " slop: " << conf.angularSlop << " err: " << err << " "
 	<< bodyConstraintB->GetPosition().angular
 	<< std::endl;
-
-
-
+*/
 	//return true;
 	return err < conf.angularSlop;
 }
