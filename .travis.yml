@@ -147,7 +147,7 @@ after_success:
       lcov --version
       pwd && ls -laF . /usr/bin/gcov*
 
-      cd $BUILD_ROOT && pwd
+      # cd $BUILD_ROOT && pwd
       find ~/ -name "*gcno" -or -name "*gcda"
       # lcov --gcov-tool /usr/bin/gcov-8 --directory PlayRho --directory UnitTests --base-directory $SOURCE_ROOT --capture --output-file coverage.info
       lcov --gcov-tool /usr/bin/gcov-8 --compat-libtool --directory PlayRho --directory UnitTests --base-directory ../PlayRho/ --capture --output-file coverage.info --quiet
@@ -157,6 +157,6 @@ after_success:
       lcov --gcov-tool /usr/bin/gcov-8 --remove coverage.info '/usr/include/*' -o coverage.info
       ls -laF coverage.info
       lcov --list coverage.info
-      cd $SOURCE_ROOT && pwd
+      # cd $SOURCE_ROOT && pwd
       coveralls-lcov --verbose $BUILD_ROOT/coverage.info
     fi
