@@ -71,6 +71,13 @@ public:
 	/// @brief Gets the length.
 	Length GetRadius() const noexcept;
 
+	/// @brief Sets the natural length.
+	/// @note Manipulating the length can lead to non-physical behavior when the frequency is zero.
+	void SetRotate(Length rotate) noexcept;
+
+	/// @brief Gets the length.
+	Length GetRotate() const noexcept;
+
 	/// @brief Sets the maximum force.
 	void SetFactor(NonNegative<Real> force) noexcept;
 
@@ -87,6 +94,7 @@ private:
 
 	Length m_radius{100}; ///< Radius.
 	Real m_factor{10};
+	bool m_rotate{false}; ///< Automatically rotate towards force of gravity.
 
 	// Solver shared
 	// Solver variables. These are only valid after InitVelocityConstraints called.
@@ -95,6 +103,7 @@ private:
 
 	Momentum2 m_impulse;
 	Time m_lastStep;
+
 
 	constexpr static auto m_inverseRadian{1.0/Radian};
 };
@@ -107,6 +116,16 @@ inline void GravityJoint::SetRadius(Length radius) noexcept
 inline Length GravityJoint::GetRadius() const noexcept
 {
 	return m_radius;
+}
+
+inline void GravityJoint::SetRotate(Length rotate) noexcept
+{
+	m_rotate = rotate;
+}
+
+inline Length GravityJoint::GetRotate() const noexcept
+{
+	return m_rotate;
 }
 
 inline void GravityJoint::SetFactor(NonNegative<Real> factor) noexcept

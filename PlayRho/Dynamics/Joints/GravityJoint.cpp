@@ -45,7 +45,8 @@ bool GravityJoint::IsOkay(const GravityJointConf& def) noexcept
 GravityJoint::GravityJoint(const GravityJointConf& def):
 	Joint{def},
 	m_factor{def.factor},
-	m_radius{def.radius}
+	m_radius{def.radius},
+	m_rotate{def.rotate}
 {
 }
 
@@ -178,7 +179,7 @@ bool GravityJoint::SolvePositionConstraints(BodyConstraintsMap& bodies, const Co
 	// NOT_USED(conf);
 	// return true;
 
-
+	if(!m_rotate) return true;
 
 	auto& bodyConstraintB = At(bodies, GetBodyB());
 	auto posB = bodyConstraintB->GetPosition();
