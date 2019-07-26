@@ -46,6 +46,7 @@ GravityJoint::GravityJoint(const GravityJointConf& def):
 	Joint{def},
 	m_factor{def.factor},
 	m_radius{def.radius},
+	m_innerRadius{def.innerRadius},
 	m_rotate{def.rotate}
 {
 }
@@ -88,7 +89,7 @@ void GravityJoint::InitVelocityConstraints(
 	// Distance between centers of mass?
 	const auto deltaLocation = Length2{(posA.linear + m_rA) - (posB.linear + m_rB)};
 
-	const auto minDistance{0.01};
+	const auto minDistance{m_innerRadius};
 
 	const auto uvresult = UnitVec::Get(deltaLocation[0], deltaLocation[1]);
 	const auto u = std::get<UnitVec>(uvresult);

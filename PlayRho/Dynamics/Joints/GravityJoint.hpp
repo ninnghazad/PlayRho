@@ -73,6 +73,13 @@ public:
 
 	/// @brief Sets the natural length.
 	/// @note Manipulating the length can lead to non-physical behavior when the frequency is zero.
+	void SetInnerRadius(Length radius) noexcept;
+
+	/// @brief Gets the length.
+	Length GetInnerRadius() const noexcept;
+
+	/// @brief Sets the natural length.
+	/// @note Manipulating the length can lead to non-physical behavior when the frequency is zero.
 	void SetRotate(Length rotate) noexcept;
 
 	/// @brief Gets the length.
@@ -93,6 +100,7 @@ private:
 								  const ConstraintSolverConf& conf) const override;
 
 	Length m_radius{100}; ///< Radius.
+	Length m_innerRadius{10}; ///< Radius.
 	Real m_factor{10};
 	bool m_rotate{false}; ///< Automatically rotate towards force of gravity.
 
@@ -116,6 +124,16 @@ inline void GravityJoint::SetRadius(Length radius) noexcept
 inline Length GravityJoint::GetRadius() const noexcept
 {
 	return m_radius;
+}
+
+inline void GravityJoint::SetInnerRadius(Length radius) noexcept
+{
+	m_innerRadius = radius;
+}
+
+inline Length GravityJoint::GetInnerRadius() const noexcept
+{
+	return m_innerRadius;
 }
 
 inline void GravityJoint::SetRotate(Length rotate) noexcept
