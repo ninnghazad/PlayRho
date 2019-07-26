@@ -40,7 +40,7 @@ GravityJointConf GetGravityJointConf(const GravityJoint& joint) noexcept
 	Set(def, joint);
 
 	def.radius = joint.GetRadius();
-	def.innterRadius = joint.GetInnerRadius();
+	def.innerRadius = joint.GetInnerRadius();
 	def.factor = joint.GetFactor();
 	def.rotate = joint.GetRotate();
 
