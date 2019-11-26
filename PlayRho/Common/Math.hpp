@@ -269,6 +269,9 @@ inline auto ModuloViaTrunc(T dividend, T divisor) noexcept
 /// @sa Atan2
 inline Angle GetNormalized(Angle value) noexcept
 {
+    PLAYRHO_CONSTEXPR const auto twoPi = Real{2 * Pi};
+    return value - twoPi * std::floor((value + Pi) / twoPi);
+/*
     PLAYRHO_CONSTEXPR const auto oneRotationInRadians = Real{2 * Pi};
     auto angleInRadians = Real{value / Radian};
 #if defined(NORMALIZE_ANGLE_VIA_FMOD)
@@ -291,6 +294,7 @@ inline Angle GetNormalized(Angle value) noexcept
         angleInRadians += Pi * 2;
     }
     return angleInRadians * Radian;
+*/
 }
 
 /// @brief Gets the angle.
@@ -795,9 +799,13 @@ inline Position GetNormalized(const Position& val) noexcept
 /// @relatedalso Sweep
 inline Sweep GetNormalized(Sweep sweep) noexcept
 {
-    const auto pos0a = playrho::GetNormalized(sweep.pos0.angular);
-    const auto d = sweep.pos0.angular - pos0a;
-    sweep.pos0.angular = pos0a;
+//    const auto pos0a = playrho::GetNormalized(sweep.pos0.angular);
+//    const auto d = sweep.pos0.angular - pos0a;
+//    sweep.pos0.angular = pos0a;
+//    sweep.pos1.angular -= d;
+    const auto twoPi = 3.14159265358979323846 * 2.0;
+    const auto d = twoPi * std::floor(sweep.pos0.angular / twoPi);
+    sweep.pos0.angular -= d;
     sweep.pos1.angular -= d;
     return sweep;
 }

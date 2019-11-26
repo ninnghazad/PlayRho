@@ -53,19 +53,31 @@ struct GravityJointConf : public JointBuilder<GravityJointConf>
 
 	/// @brief Initializing constructor.
 	/// @details Initialize the bodies, anchors, and length using the world anchors.
-	GravityJointConf(NonNull<Body*> bodyA, NonNull<Body*> bodyB, Length r, Real f) noexcept;
+	GravityJointConf(NonNull<Body*> bodyA, NonNull<Body*> bodyB, Length r, Length ir, Real f, bool rot) noexcept;
 
 	/// @brief Uses the given length.
 	PLAYRHO_CONSTEXPR inline GravityJointConf& UseRadius(Length v) noexcept;
 
+	/// @brief Uses the given length.
+	PLAYRHO_CONSTEXPR inline GravityJointConf& UseInnerRadius(Length v) noexcept;
+
 	/// @brief Use value for max force.
 	PLAYRHO_CONSTEXPR inline GravityJointConf& UseFactor(Real v) noexcept;
+
+	/// @brief Set auto rotate mode
+	PLAYRHO_CONSTEXPR inline GravityJointConf& UseRotate(bool r) noexcept;
 
 	/// @brief Natural length between the anchor points.
 	Length radius{1_m};
 
+	/// @brief Natural length between the anchor points.
+	Length innerRadius{1_m};
+
 	/// @brief A simple factor to scale the strength of gravitational pull
 	Real factor{10};
+
+	/// @brief Automatically rotate towards force of gravity.
+	bool rotate{false};
 };
 
 PLAYRHO_CONSTEXPR inline GravityJointConf& GravityJointConf::UseRadius(Length v) noexcept
@@ -74,9 +86,22 @@ PLAYRHO_CONSTEXPR inline GravityJointConf& GravityJointConf::UseRadius(Length v)
 	return *this;
 }
 
+
+PLAYRHO_CONSTEXPR inline GravityJointConf& GravityJointConf::UseInnerRadius(Length v) noexcept
+{
+	innerRadius = v;
+	return *this;
+}
+
 PLAYRHO_CONSTEXPR inline GravityJointConf& GravityJointConf::UseFactor(Real v) noexcept
 {
 	factor = v;
+	return *this;
+}
+
+PLAYRHO_CONSTEXPR inline GravityJointConf& GravityJointConf::UseRotate(bool r) noexcept
+{
+	rotate = r;
 	return *this;
 }
 

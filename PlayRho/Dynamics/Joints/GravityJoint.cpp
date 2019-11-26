@@ -24,17 +24,13 @@
 #include <PlayRho/Dynamics/Body.hpp>
 #include <PlayRho/Dynamics/StepConf.hpp>
 #include <PlayRho/Dynamics/Contacts/BodyConstraint.hpp>
+#include <PlayRho/Dynamics/Contacts/ContactSolver.hpp>
+
+#include <PlayRho/Common/Math.hpp>
+
 
 namespace playrho {
 namespace d2 {
-
-// p = attached point, m = mouse point
-// C = p - m
-// Cdot = v
-//	  = v + cross(w, r)
-// J = [I r_skew]
-// Identity used:
-// w k % (rx i + ry j) = w * (-ry i + rx j)
 
 
 bool GravityJoint::IsOkay(const GravityJointConf& def) noexcept
@@ -49,7 +45,9 @@ bool GravityJoint::IsOkay(const GravityJointConf& def) noexcept
 GravityJoint::GravityJoint(const GravityJointConf& def):
 	Joint{def},
 	m_factor{def.factor},
-	m_radius{def.radius}
+	m_radius{def.radius},
+	m_innerRadius{def.innerRadius},
+	m_rotate{def.rotate}
 {
 }
 
@@ -91,7 +89,7 @@ void GravityJoint::InitVelocityConstraints(
 	// Distance between centers of mass?
 	const auto deltaLocation = Length2{(posA.linear + m_rA) - (posB.linear + m_rB)};
 
-	const auto minDistance{0.01};
+	const auto minDistance{m_innerRadius};
 
 	const auto uvresult = UnitVec::Get(deltaLocation[0], deltaLocation[1]);
 	const auto u = std::get<UnitVec>(uvresult);
@@ -103,7 +101,9 @@ void GravityJoint::InitVelocityConstraints(
 	const auto m1 = (invMassB == 0) ? 1 : (1.0/invMassB);
 
 	// Inspired by real gravity, but without G and with a shift and factor
-	m_impulse = std::max(((1.0 / (distance*distance)) - (1.0 / (m_radius*m_radius))),Real{0}) * m0 * m1 * m_factor * u;
+	//m_impulse = std::max(((1.0 / (distance*distance)) - (1.0 / (m_radius*m_radius))),Real{0}) * m0 * m1 * m_factor * u;
+
+	m_impulse = std::max(((m_factor / (distance*distance)) - (m_factor / (m_radius*m_radius))),Real{0}) * m0 * m1 * u;
 
 	// We have to start this with 0 or SolveVelocityConstraints will not do enough iterations
 	//m_lastStep = step.GetTime();
@@ -157,29 +157,52 @@ bool GravityJoint::SolveVelocityConstraints(BodyConstraintsMap& bodies, const St
 	// //<< " P: " << posA.linear[0] << "x" << posA.linear[1] << " " << posB.linear[0] << "x" << posB.linear[1]
 	// << std::endl;
 
-	const auto oldStep = m_lastStep;
-	m_lastStep = step.GetTime();
-
 	const auto ovA = velA;
 	const auto ovB = velB;
-	const auto P = m_impulse * m_lastStep;
+	const auto P = m_impulse * step.GetTime();
 	const auto LA = Cross(m_rA, P) * m_inverseRadian;
 	const auto LB = Cross(m_rB, P) * m_inverseRadian;
 	velA -= Velocity{invMassA * P, invRotInertiaA * LA};
 	velB += Velocity{invMassB * P, invRotInertiaB * LB};
 
-	bodyConstraintA->SetVelocity(velA);
-	bodyConstraintB->SetVelocity(velB);
+	if(ovB != velB || ovA != velA) {
+		bodyConstraintA->SetVelocity(velA);
+		bodyConstraintB->SetVelocity(velB);
+		return false;
+	}
 
-	// TODO: this is probably sub-optimal, works though
-	return ovA == velA && ovB == velB;
+	return true;
 }
 
 bool GravityJoint::SolvePositionConstraints(BodyConstraintsMap& bodies, const ConstraintSolverConf& conf) const
 {
-	NOT_USED(bodies);
-	NOT_USED(conf);
-	return true;
+	// NOT_USED(bodies);
+	// NOT_USED(conf);
+	// return true;
+
+	if(!m_rotate) return true;
+
+	auto& bodyConstraintB = At(bodies, GetBodyB());
+	auto posB = bodyConstraintB->GetPosition();
+
+	const auto targetU = UnitVec::Get(m_impulse[0],m_impulse[1]).first;
+
+	const auto targetAngle = GetAngle(targetU.Rotate(UnitVec::GetTop()));
+	const auto err = abs(posB.angular - targetAngle);
+
+	posB.angular = targetAngle;
+	bodyConstraintB->SetPosition(posB);
+/*
+	std::cout << "GRAVROTA " << targetAngle << " "
+	<< GetAngle(targetU.Rotate(UnitVec::GetRight())) << " "
+	<< GetAngle(targetU.Rotate(UnitVec::GetTop())) << " "
+	<< GetAngle(targetU.Rotate(UnitVec::GetLeft()))
+	<< " slop: " << conf.angularSlop << " err: " << err << " "
+	<< bodyConstraintB->GetPosition().angular
+	<< std::endl;
+*/
+	//return true;
+	return err < conf.angularSlop;
 }
 
 

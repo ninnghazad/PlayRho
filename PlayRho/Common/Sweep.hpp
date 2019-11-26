@@ -114,8 +114,9 @@ inline void Sweep::Advance0(const Real alpha) noexcept
     assert(alpha >= 0);
     assert(alpha < 1);
     assert(alpha0 < 1);
-    
+
     const auto beta = (alpha - alpha0) / (1 - alpha0);
+
     pos0 = GetPosition(pos0, pos1, beta);
     alpha0 = alpha;
 }

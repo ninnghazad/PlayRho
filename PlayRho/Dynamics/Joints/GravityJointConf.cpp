@@ -26,9 +26,9 @@
 namespace playrho {
 namespace d2 {
 
-GravityJointConf::GravityJointConf(NonNull<Body*> bA, NonNull<Body*> bB, Length r,Real f) noexcept :
+GravityJointConf::GravityJointConf(NonNull<Body*> bA, NonNull<Body*> bB, Length r,Length ir,Real f,bool rot) noexcept :
 	super{super{JointType::Gravity}.UseBodyA(bA).UseBodyB(bB)},
-	radius{r},factor{f}
+	radius{r},innerRadius{ir},factor{f},rotate{rot}
 {
 	collideConnected = true;
 }
@@ -40,7 +40,9 @@ GravityJointConf GetGravityJointConf(const GravityJoint& joint) noexcept
 	Set(def, joint);
 
 	def.radius = joint.GetRadius();
+	def.innerRadius = joint.GetInnerRadius();
 	def.factor = joint.GetFactor();
+	def.rotate = joint.GetRotate();
 
 	return def;
 }
